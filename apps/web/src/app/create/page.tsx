@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight } from "lucide-react";
+import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,58 @@ export default function CreateRemittance() {
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
-  
+
+  // ODIS Phone Lookup State
+  const [isResolvingPhone, setIsResolvingPhone] = useState(false);
+  const [phoneResolutionStatus, setPhoneResolutionStatus] = useState<{
+    type: "success" | "error" | "idle";
+    message: string;
+  }>({ type: "idle", message: "" });
+
+  const handlePhoneLookup = async (phone: string) => {
+    if (!phone || !phone.startsWith("+") || phone.length < 8) {
+      setPhoneResolutionStatus({ type: "idle", message: "" });
+      return;
+    }
+
+    setIsResolvingPhone(true);
+    setPhoneResolutionStatus({ type: "idle", message: "" });
+
+    try {
+      const res = await fetch("/api/agent/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: phone.trim() }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success && data.walletAddress) {
+        setRecipientAddress(data.walletAddress);
+        setPhoneResolutionStatus({
+          type: "success",
+          message: `Linked wallet found: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`
+        });
+        showToast("Recipient wallet address found!", "success");
+      } else if (res.ok && data.success && !data.walletAddress) {
+        setPhoneResolutionStatus({
+          type: "error",
+          message: "No MiniPay wallet is linked to this phone number yet."
+        });
+        showToast("Phone number not registered on MiniPay", "error");
+      } else {
+        throw new Error(data.error || "Lookup failed");
+      }
+    } catch (err: any) {
+      console.error("Lookup error:", err);
+      setPhoneResolutionStatus({
+        type: "error",
+        message: err.message || "Failed to lookup phone number."
+      });
+    } finally {
+      setIsResolvingPhone(false);
+    }
+  };
+
   // Amount is always entered in the active DISPLAY currency (USD or IDR)
   const [amountInput, setAmountInput] = useState("");
   const [frequency, setFrequency] = useState<"One-time" | "Weekly" | "Monthly">("Monthly");
@@ -217,6 +268,60 @@ export default function CreateRemittance() {
             />
           </div>
 
+          {/* Phone Number */}
+          <div className="space-y-1.5">
+            <Label htmlFor="recipientPhone" className="text-xs font-bold text-slate-500 flex items-center gap-1">
+              <Phone size={13} className="text-slate-400" />
+              Recipient Phone Number (Optional)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="recipientPhone"
+                placeholder="e.g. +628123456789"
+                value={recipientPhone}
+                onChange={(e) => {
+                  setRecipientPhone(e.target.value);
+                  if (phoneResolutionStatus.type !== "idle") {
+                    setPhoneResolutionStatus({ type: "idle", message: "" });
+                  }
+                }}
+                onBlur={() => {
+                  if (recipientPhone.startsWith("+") && recipientPhone.length >= 8) {
+                    handlePhoneLookup(recipientPhone);
+                  }
+                }}
+                className="rounded-xl border-border focus-visible:ring-[#09955F] flex-1"
+              />
+              {recipientPhone.startsWith("+") && recipientPhone.length >= 8 && (
+                <button
+                  type="button"
+                  onClick={() => handlePhoneLookup(recipientPhone)}
+                  disabled={isResolvingPhone}
+                  className="px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 disabled:opacity-50 text-xs font-bold rounded-xl border border-slate-200 transition-colors flex items-center gap-1 active:scale-[0.98]"
+                >
+                  {isResolvingPhone ? (
+                    <Loader2 size={13} className="animate-spin text-primary" />
+                  ) : (
+                    <Search size={13} />
+                  )}
+                  Lookup
+                </button>
+              )}
+            </div>
+            {phoneResolutionStatus.type === "success" && (
+              <p className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200">
+                <CheckCircle2 size={12} className="shrink-0" />
+                {phoneResolutionStatus.message}
+              </p>
+            )}
+            {phoneResolutionStatus.type === "error" && (
+              <p className="text-[11px] text-amber-600 flex items-center gap-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200">
+                <AlertCircle size={12} className="shrink-0" />
+                {phoneResolutionStatus.message}
+              </p>
+            )}
+          </div>
+
           {/* Wallet Address */}
           <div className="space-y-1.5">
             <Label htmlFor="recipientAddress" className="text-xs font-bold text-foreground flex items-center gap-1">
@@ -229,21 +334,6 @@ export default function CreateRemittance() {
               value={recipientAddress}
               onChange={(e) => setRecipientAddress(e.target.value)}
               className="rounded-xl border-border font-mono text-xs focus-visible:ring-[#09955F]"
-            />
-          </div>
-
-          {/* Phone Number */}
-          <div className="space-y-1.5">
-            <Label htmlFor="recipientPhone" className="text-xs font-bold text-slate-500 flex items-center gap-1">
-              <Phone size={13} className="text-slate-400" />
-              Recipient Phone Number (Optional)
-            </Label>
-            <Input
-              id="recipientPhone"
-              placeholder="e.g. +628123456789"
-              value={recipientPhone}
-              onChange={(e) => setRecipientPhone(e.target.value)}
-              className="rounded-xl border-border focus-visible:ring-[#09955F]"
             />
           </div>
 
