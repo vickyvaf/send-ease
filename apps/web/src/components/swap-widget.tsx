@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { ArrowUpDown, ChevronDown, Send, Search } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Send, Search, ScanSearch, Copy, Check } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
@@ -39,10 +39,18 @@ export function SwapWidget() {
   const [countrySearch, setCountrySearch] = useState("");
   const [dropdownPosition, setDropdownPosition] = useState<"top" | "bottom">("bottom");
 
+  const [isResolvingPhone, setIsResolvingPhone] = useState(false);
+  const [resolvedAddress, setResolvedAddress] = useState<string>("");
+  const [phoneResolutionStatus, setPhoneResolutionStatus] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
   const [showSellDropdown, setShowSellDropdown] = useState(false);
   const [showBuyDropdown, setShowBuyDropdown] = useState(false);
   const [isTransferring, setIsTransferring] = useState(false);
   const [rotation, setRotation] = useState(0);
+  const [copied, setCopied] = useState(false);
 
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
@@ -199,6 +207,108 @@ export function SwapWidget() {
     setSellAmount(""); // Reset amount to prevent mismatch with new token's balance
   };
 
+  const resolvePhoneAddress = async (phone: string) => {
+    setIsResolvingPhone(true);
+    setResolvedAddress("");
+    setPhoneResolutionStatus(null);
+
+    try {
+      const res = await fetch("/api/agent/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: phone }),
+      });
+      const data = await res.json();
+      if (data.walletAddress) {
+        setResolvedAddress(data.walletAddress);
+        setPhoneResolutionStatus({
+          type: "success",
+          message: `Wallet found: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`,
+        });
+        showToast("Recipient wallet address resolved successfully!", "success");
+      } else {
+        setPhoneResolutionStatus({
+          type: "error",
+          message: "No registered wallet found for this number.",
+        });
+      }
+    } catch (e) {
+      console.error(e);
+      setPhoneResolutionStatus({
+        type: "error",
+        message: "Failed to perform phone lookup.",
+      });
+    } finally {
+      setIsResolvingPhone(false);
+    }
+  };
+
+  // Debounce phone lookup as user types
+  useEffect(() => {
+    let cleanedNumber = phoneNumber.trim().replace(/[^\d]/g, "");
+    if (cleanedNumber.startsWith("0")) {
+      cleanedNumber = cleanedNumber.substring(1);
+    }
+    if (!cleanedNumber || cleanedNumber.length < 3) {
+      return;
+    }
+    const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
+
+    const delayDebounceFn = setTimeout(() => {
+      resolvePhoneAddress(fullPhoneNumber);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [phoneNumber, selectedPrefix]);
+
+  const handlePhoneLookup = async () => {
+    // If running in MiniPay, use the native contact picker
+    if (typeof window !== "undefined" && window.ethereum?.isMiniPay) {
+      setIsResolvingPhone(true);
+      setResolvedAddress("");
+      setPhoneResolutionStatus(null);
+      try {
+        const contact = await (window.ethereum as any).request({
+          method: "minipay_requestContact",
+        });
+        if (contact && contact.address) {
+          setResolvedAddress(contact.address);
+
+          const displayName = contact.name || "Contact";
+          setPhoneResolutionStatus({
+            type: "success",
+            message: `Wallet found: ${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`,
+          });
+
+          if (contact.name) {
+            showToast(`Selected contact: ${contact.name}`, "success");
+          } else {
+            showToast("Contact resolved successfully!", "success");
+          }
+        } else {
+          showToast("No contact selected", "error");
+        }
+      } catch (e: any) {
+        console.error("minipay_requestContact failed:", e);
+        showToast("Failed to retrieve contact from MiniPay", "error");
+      } finally {
+        setIsResolvingPhone(false);
+      }
+      return;
+    }
+
+    let cleanedNumber = phoneNumber.trim().replace(/[^\d]/g, "");
+    if (cleanedNumber.startsWith("0")) {
+      cleanedNumber = cleanedNumber.substring(1);
+    }
+    if (!cleanedNumber) {
+      showToast("Please enter a valid phone number", "error");
+      return;
+    }
+    const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
+    resolvePhoneAddress(fullPhoneNumber);
+  };
+
   const handleAction = () => {
     if (!buyToken) {
       showToast("Please select a token to buy", "error");
@@ -208,7 +318,7 @@ export function SwapWidget() {
       showToast("Please enter an amount to transfer", "error");
       return;
     }
-    
+
     let cleanedNumber = phoneNumber.trim().replace(/[^\d]/g, "");
     if (cleanedNumber.startsWith("0")) {
       cleanedNumber = cleanedNumber.substring(1);
@@ -217,17 +327,22 @@ export function SwapWidget() {
       showToast("Please enter a contact number", "error");
       return;
     }
-    
+
     const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
+    const destinationDesc = resolvedAddress
+      ? `${resolvedAddress.slice(0, 6)}...${resolvedAddress.slice(-4)} (${fullPhoneNumber})`
+      : fullPhoneNumber;
 
     setIsTransferring(true);
-    showToast(`Initiating transfer: ${sellAmount} ${sellToken} to ${buyToken} (${fullPhoneNumber})...`, "success");
+    showToast(`Initiating transfer: ${sellAmount} ${sellToken} to ${buyToken} (${destinationDesc})...`, "success");
 
     setTimeout(() => {
       setIsTransferring(false);
       showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${buyToken}!`, "success");
       setSellAmount("");
       setPhoneNumber("");
+      setResolvedAddress("");
+      setPhoneResolutionStatus(null);
     }, 2000);
   };
 
@@ -411,7 +526,7 @@ export function SwapWidget() {
       {/* Contact Number Input */}
       <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col h-fit relative">
         <label className="text-xs font-bold text-slate-400 tracking-wider mb-2">Recipient Contact Number</label>
-        
+
         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs relative">
           {/* Prefix Selector Dropdown */}
           <div className="relative shrink-0" ref={phoneDropdownRef}>
@@ -426,11 +541,10 @@ export function SwapWidget() {
             </button>
 
             {showPhoneDropdown && (
-              <div className={`absolute left-0 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-30 animate-in fade-in duration-150 flex flex-col max-h-60 ${
-                dropdownPosition === "top"
+              <div className={`absolute left-0 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-30 animate-in fade-in duration-150 flex flex-col max-h-60 ${dropdownPosition === "top"
                   ? "bottom-full mb-2 origin-bottom slide-in-from-bottom-2"
                   : "mt-3 origin-top slide-in-from-top-2"
-              }`}>
+                }`}>
                 {/* Search country */}
                 <div className="px-2 pb-1.5 border-b border-slate-100 flex items-center gap-1">
                   <Search className="w-3 h-3 text-slate-400 shrink-0" />
@@ -442,7 +556,7 @@ export function SwapWidget() {
                     className="w-full text-xs border-none outline-none p-0 focus:ring-0 placeholder-slate-300 text-slate-700"
                   />
                 </div>
-                
+
                 <div className="overflow-y-auto flex-1 mt-1">
                   {filteredCountries.map((c) => (
                     <button
@@ -453,9 +567,8 @@ export function SwapWidget() {
                         setShowPhoneDropdown(false);
                         setCountrySearch("");
                       }}
-                      className={`flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-50 transition-colors ${
-                        selectedPrefix === c.code ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
-                      }`}
+                      className={`flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-50 transition-colors ${selectedPrefix === c.code ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
+                        }`}
                     >
                       <span className="text-xs flex items-center gap-1.5">
                         <span>{c.flag}</span>
@@ -480,10 +593,54 @@ export function SwapWidget() {
               // Only allow digits, spaces, hyphens
               const val = e.target.value.replace(/[^\d\s\-]/g, "");
               setPhoneNumber(val);
+              // Clear resolution when phone number changes
+              if (resolvedAddress || phoneResolutionStatus) {
+                setResolvedAddress("");
+                setPhoneResolutionStatus(null);
+              }
             }}
             className="bg-transparent border-none outline-none text-sm font-semibold p-0 text-slate-900 placeholder-slate-300 w-full focus:ring-0"
           />
+
+          {/* Search/Lookup Button */}
+          <button
+            type="button"
+            onClick={handlePhoneLookup}
+            disabled={isResolvingPhone || (!(typeof window !== "undefined" && window.ethereum?.isMiniPay) && !phoneNumber.trim())}
+            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#09955F] transition-all disabled:opacity-40 disabled:pointer-events-none shrink-0"
+            title={typeof window !== "undefined" && window.ethereum?.isMiniPay ? "Choose from contacts" : "Lookup wallet address"}
+          >
+            {isResolvingPhone ? (
+              <span className="w-4 h-4 border-2 border-[#09955F] border-t-transparent rounded-full animate-spin block"></span>
+            ) : (
+              <ScanSearch className="w-4 h-4" />
+            )}
+          </button>
         </div>
+
+        {phoneResolutionStatus && (
+          <div className="mt-2 flex items-center gap-1.5">
+            <div className={`text-xs font-semibold ${phoneResolutionStatus.type === "success" ? "text-[#09955F]" : "text-rose-500"
+              }`}>
+              {phoneResolutionStatus.message}
+            </div>
+            {phoneResolutionStatus.type === "success" && resolvedAddress && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(resolvedAddress);
+                  setCopied(true);
+                  showToast("Wallet address copied!", "success");
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-[#09955F] transition-all shrink-0"
+                title="Copy address"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-[#09955F]" /> : <Copy className="w-3.5 h-3.5" />}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Action Button */}

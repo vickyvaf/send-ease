@@ -32,6 +32,40 @@ export default function CreateRemittance() {
   }>({ type: "idle", message: "" });
 
   const handlePhoneLookup = async (phone: string) => {
+    // If running in MiniPay, use the native contact picker
+    if (typeof window !== "undefined" && window.ethereum?.isMiniPay) {
+      setIsResolvingPhone(true);
+      setPhoneResolutionStatus({ type: "idle", message: "" });
+      try {
+        const contact = await (window.ethereum as any).request({
+          method: "minipay_requestContact",
+        });
+        if (contact && contact.address) {
+          setRecipientAddress(contact.address);
+          if (contact.name) {
+            setRecipientName(contact.name);
+          }
+          if (contact.phoneNumber) {
+            setRecipientPhone(contact.phoneNumber);
+          }
+          const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
+          setPhoneResolutionStatus({
+            type: "success",
+            message: `Address found: ${shortAddr}`
+          });
+          showToast("Address found successfully!", "success");
+        } else {
+          showToast("No contact selected", "error");
+        }
+      } catch (err: any) {
+        console.error("minipay_requestContact failed:", err);
+        showToast("Failed to retrieve contact from MiniPay", "error");
+      } finally {
+        setIsResolvingPhone(false);
+      }
+      return;
+    }
+
     if (!phone || !phone.startsWith("+") || phone.length < 8) {
       setPhoneResolutionStatus({ type: "idle", message: "" });
       return;
@@ -76,6 +110,49 @@ export default function CreateRemittance() {
       setIsResolvingPhone(false);
     }
   };
+
+  // Debounce phone lookup on typing
+  useEffect(() => {
+    const sanitized = recipientPhone.replace(/[\s\-\(\)]/g, "");
+    if (!sanitized || !sanitized.startsWith("+") || sanitized.length < 5) {
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      setIsResolvingPhone(true);
+      setPhoneResolutionStatus({ type: "idle", message: "" });
+
+      try {
+        const res = await fetch("/api/agent/lookup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phoneNumber: sanitized }),
+        });
+
+        const data = await res.json();
+        if (res.ok && data.success && data.walletAddress) {
+          setRecipientAddress(data.walletAddress);
+          const shortAddr = `${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`;
+          setPhoneResolutionStatus({
+            type: "success",
+            message: `Address found: ${shortAddr}`
+          });
+          showToast("Address found successfully!", "success");
+        } else if (res.ok && data.success && !data.walletAddress) {
+          setPhoneResolutionStatus({
+            type: "error",
+            message: "Failed to find any registered wallet for this phone number."
+          });
+        }
+      } catch (err: any) {
+        console.error("Lookup error:", err);
+      } finally {
+        setIsResolvingPhone(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [recipientPhone]);
 
   // Amount is always entered in USD
   const [amountInput, setAmountInput] = useState("");
@@ -293,19 +370,19 @@ export default function CreateRemittance() {
                 }}
                 className="rounded-xl border-border focus-visible:ring-[#09955F] flex-1"
               />
-              {recipientPhone.startsWith("+") && recipientPhone.length >= 8 && (
+              {((typeof window !== "undefined" && window.ethereum?.isMiniPay) || (recipientPhone.startsWith("+") && recipientPhone.length >= 8)) && (
                 <button
                   type="button"
                   onClick={() => handlePhoneLookup(recipientPhone)}
                   disabled={isResolvingPhone}
-                  className="px-3 bg-white hover:bg-primary/5 text-primary disabled:opacity-50 text-xs font-bold rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-1 active:scale-[0.98]"
+                  className="px-3 bg-white hover:bg-primary/5 text-[#09955F] disabled:opacity-50 text-xs font-bold rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-1 active:scale-[0.98]"
                 >
                   {isResolvingPhone ? (
-                    <Loader2 size={13} className="animate-spin text-primary" />
+                    <Loader2 size={13} className="animate-spin text-[#09955F]" />
                   ) : (
                     <Search size={13} />
                   )}
-                  Lookup
+                  {typeof window !== "undefined" && window.ethereum?.isMiniPay ? "Contacts" : "Lookup"}
                 </button>
               )}
             </div>
