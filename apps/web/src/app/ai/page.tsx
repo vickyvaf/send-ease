@@ -6,7 +6,6 @@ import { useAccount, usePublicClient } from "wagmi";
 import { formatUnits } from "viem";
 import { Send, User, Bot, Mic, MicOff, RefreshCw, Pencil, Plus, MessageSquare, Clock, X, Calendar, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useChat, Message, ChatSession } from "@/context/chat-context";
 import { stripMarkdown } from "@/lib/utils";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
@@ -67,12 +66,12 @@ export default function AIAgent() {
               amount: parseFloat(formatUnits(s.amount, 18)),
               frequency: Number(s.frequency),
               status: Number(s.status),
-              nextPayment: s.nextExecutionTimestamp > 0 
+              nextPayment: s.nextExecutionTimestamp > 0
                 ? new Date(Number(s.nextExecutionTimestamp) * 1000).toLocaleDateString()
                 : "None",
             });
           }
-        } catch (err) {}
+        } catch (err) { }
       }
       setUserSchedules(list);
     } catch (e: any) {
@@ -245,7 +244,7 @@ export default function AIAgent() {
     };
 
     localStorage.setItem("sendease_pending_remittance", JSON.stringify(pendingData));
-    
+
     if (!pendingData.recipientAddress) {
       // If address was placeholder, redirect to New Remittance form page to enter address
       showToast("Please verify the details and fill the Celo address", "success");
@@ -285,18 +284,18 @@ export default function AIAgent() {
                           <div className="grid grid-cols-2 gap-1.5 text-xs text-slate-700">
                             <span className="text-slate-500">Recipient Name:</span>
                             <span className="font-semibold">{msg.actionData.recipientName}</span>
-                            
+
                             <span className="text-slate-500">Amount:</span>
                             <span className="font-semibold text-primary">
                               ${formatAmount(msg.actionData.amount)}
                             </span>
-                            
+
                             <span className="text-slate-500">Frequency:</span>
                             <span className="font-semibold flex items-center gap-0.5">
                               <Calendar size={11} className="text-slate-400" />
                               {msg.actionData.frequency}
                             </span>
-                            
+
                             <span className="text-slate-500">Start Date:</span>
                             <span className="font-semibold">{msg.actionData.startDate}</span>
 
@@ -436,13 +435,18 @@ export default function AIAgent() {
           </div>
 
           {/* Input field row */}
-          <div className="relative px-2 py-2">
-            <Input
+          <div className="relative px-2 pt-2">
+            <textarea
               placeholder="Type your prompt..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              className="pr-24 h-12 rounded-xl bg-white shadow-none text-sm border-transparent focus-visible:ring-0 focus-visible:border-transparent"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              className="w-full pr-24 pl-3 pt-3 rounded-xl bg-white shadow-none text-sm border-transparent focus:outline-none focus:ring-0 focus:border-transparent resize-none no-scrollbar"
             />
             <div className="absolute right-3 top-3 flex gap-1">
               <Button
