@@ -10,14 +10,13 @@ import { Input } from "@/components/ui/input";
 import { useChat, Message, ChatSession } from "@/context/chat-context";
 import { stripMarkdown } from "@/lib/utils";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
-import { useCurrency } from "@/context/currency-context";
+import { formatAmount } from "@/lib/app-utils";
 import { useToast } from "@/context/toast-context";
 
 export default function AIAgent() {
   const router = useRouter();
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
-  const { currency, convertStableUsdToDisplay, formatInDisplayCurrency } = useCurrency();
   const { showToast } = useToast();
 
   const { messages, setMessages, currentSessionId, setCurrentSessionId, sessions, deleteSession } = useChat();
@@ -226,10 +225,10 @@ export default function AIAgent() {
   };
 
   const handleConfirmPlan = (params: any) => {
-    // Prefill form parameters in local storage and route directly to review page
     const amountVal = params.amount;
-    const displayAmount = convertStableUsdToDisplay(amountVal, "USDm");
-    const displayLimit = params.hasMonthlyLimit ? convertStableUsdToDisplay(params.maxMonthlyAmount, "USDm") : 0;
+    // Amounts are already in USD
+    const displayAmount = amountVal;
+    const displayLimit = params.hasMonthlyLimit ? params.maxMonthlyAmount : 0;
 
     const pendingData = {
       recipientName: params.recipientName,
@@ -289,8 +288,7 @@ export default function AIAgent() {
                             
                             <span className="text-slate-500">Amount:</span>
                             <span className="font-semibold text-primary">
-                              {currency === "IDR" ? "Rp " : ""}
-                              {formatInDisplayCurrency(convertStableUsdToDisplay(msg.actionData.amount, "USDm"))}
+                              ${formatAmount(msg.actionData.amount)}
                             </span>
                             
                             <span className="text-slate-500">Frequency:</span>
@@ -307,7 +305,7 @@ export default function AIAgent() {
                                 <span className="text-slate-500">Monthly Limit:</span>
                                 <span className="font-semibold text-slate-800 flex items-center gap-0.5">
                                   <Settings size={11} className="text-slate-400" />
-                                  {formatInDisplayCurrency(convertStableUsdToDisplay(msg.actionData.maxMonthlyAmount, "USDm"))}
+                                  ${formatAmount(msg.actionData.maxMonthlyAmount)}
                                 </span>
                               </>
                             )}

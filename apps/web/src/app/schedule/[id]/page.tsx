@@ -10,7 +10,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/context/toast-context";
-import { useCurrency } from "@/context/currency-context";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
 import { truncateAddress, formatAmount } from "@/lib/app-utils";
@@ -28,7 +27,6 @@ export default function ScheduleDetail({ params }: PageProps) {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { showToast } = useToast();
-  const { currency, convertStableUsdToDisplay, convertDisplayToStableUsd, formatInDisplayCurrency } = useCurrency();
 
   const [schedule, setSchedule] = useState<any>(null);
   const [historyLogs, setHistoryLogs] = useState<any[]>([]);
@@ -77,13 +75,11 @@ export default function ScheduleDetail({ params }: PageProps) {
       };
       setSchedule(mapped);
 
-      // Pre-fill form inputs
-      const displayAmount = convertStableUsdToDisplay(mapped.amount, "USDm");
-      setEditAmount(displayAmount.toFixed(2));
+      // Pre-fill form inputs — amounts are in USD
+      setEditAmount(mapped.amount.toFixed(2));
       setEditHasLimit(mapped.hasMonthlyLimit);
       if (mapped.hasMonthlyLimit) {
-        const displayLimit = convertStableUsdToDisplay(mapped.maxMonthlyAmount, "USDm");
-        setEditLimit(displayLimit.toFixed(2));
+        setEditLimit(mapped.maxMonthlyAmount.toFixed(2));
       }
 
       // 2. Fetch specific logs for this schedule
@@ -217,9 +213,9 @@ export default function ScheduleDetail({ params }: PageProps) {
 
     setSigningAction(true);
     try {
-      // Convert values to USDm (18 decimals) standard
-      const amountUsd = convertDisplayToStableUsd(amountVal, "USDm");
-      const limitUsd = editHasLimit ? convertDisplayToStableUsd(limitVal, "USDm") : 0;
+      // Amounts are already in USD
+      const amountUsd = amountVal;
+      const limitUsd = editHasLimit ? limitVal : 0;
 
       const amountWei = parseUnits(amountUsd.toString(), usdmToken.decimals);
       const limitWei = parseUnits(limitUsd.toString(), usdmToken.decimals);
@@ -304,8 +300,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           <div className="text-center pt-2">
             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
             <p className="text-2xl font-black text-foreground">
-              {currency === "IDR" ? "Rp " : ""}
-              {formatInDisplayCurrency(convertStableUsdToDisplay(schedule.amount, "USDm"))}
+              ${formatAmount(schedule.amount)} USD
             </p>
           </div>
         </CardContent>
@@ -331,7 +326,7 @@ export default function ScheduleDetail({ params }: PageProps) {
             <div className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="editAmount" className="text-xs font-bold text-foreground">
-                  Payment Amount ({currency})
+                  Payment Amount (USD)
                 </Label>
                 <Input
                   id="editAmount"
@@ -358,7 +353,7 @@ export default function ScheduleDetail({ params }: PageProps) {
               {editHasLimit && (
                 <div className="space-y-1.5 animate-in fade-in duration-300">
                   <Label htmlFor="editLimit" className="text-xs font-bold text-foreground">
-                    Max Monthly Amount ({currency})
+                    Max Monthly Amount (USD)
                   </Label>
                   <Input
                     id="editLimit"
@@ -406,8 +401,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Monthly Limit Used</span>
                     <span className="font-bold text-foreground">
-                      {currency === "IDR" ? "Rp " : ""}
-                      {formatInDisplayCurrency(convertStableUsdToDisplay(schedule.currentMonthPaid, "USDm"))} / {formatInDisplayCurrency(convertStableUsdToDisplay(schedule.maxMonthlyAmount, "USDm"))}
+                      ${formatAmount(schedule.currentMonthPaid)} / ${formatAmount(schedule.maxMonthlyAmount)}
                     </span>
                   </div>
                   {/* Flat progress bar */}
@@ -445,8 +439,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                 </div>
                 <div className="text-right space-y-0.5">
                   <p className="font-bold text-foreground">
-                    +{currency === "IDR" ? "Rp " : ""}
-                    {formatInDisplayCurrency(convertStableUsdToDisplay(log.amount, "USDm"))}
+                    +${formatAmount(log.amount)}
                   </p>
                   <a
                     href={`https://celoscan.io/tx/${log.txHash}`}

@@ -8,13 +8,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/context/toast-context";
-import { useCurrency } from "@/context/currency-context";
 import { isValidAddress } from "@/lib/app-utils";
 
 export default function CreateRemittance() {
   const router = useRouter();
   const { showToast } = useToast();
-  const { currency, convertStableUsdToDisplay, convertDisplayToStableUsd } = useCurrency();
 
   // Prompt/AI State
   const [prompt, setPrompt] = useState("");
@@ -79,7 +77,7 @@ export default function CreateRemittance() {
     }
   };
 
-  // Amount is always entered in the active DISPLAY currency (USD or IDR)
+  // Amount is always entered in USD
   const [amountInput, setAmountInput] = useState("");
   const [frequency, setFrequency] = useState<"One-time" | "Weekly" | "Monthly">("Monthly");
   const [startDate, setStartDate] = useState("");
@@ -119,10 +117,9 @@ export default function CreateRemittance() {
           }
           setRecipientPhone(params.recipientPhone || "");
 
-          // Set inputs. Amount is converted from USD to display currency
+          // Set inputs. Amount is in USD
           const amountUsd = params.amount;
-          const displayAmount = convertStableUsdToDisplay(amountUsd, "USDm");
-          setAmountInput(displayAmount.toFixed(2));
+          setAmountInput(amountUsd.toFixed(2));
 
           setFrequency(params.frequency);
           if (params.startDate) {
@@ -130,8 +127,7 @@ export default function CreateRemittance() {
           }
           setHasMonthlyLimit(params.hasMonthlyLimit || false);
           if (params.maxMonthlyAmount) {
-            const displayMax = convertStableUsdToDisplay(params.maxMonthlyAmount, "USDm");
-            setMaxMonthlyInput(displayMax.toFixed(2));
+            setMaxMonthlyInput(params.maxMonthlyAmount.toFixed(2));
           }
 
           showToast("Form prefilled successfully by AI!", "success");
@@ -182,10 +178,9 @@ export default function CreateRemittance() {
       }
     }
 
-    // 2. Convert amounts back to USDm standard (18 decimals) for contract execution
-    // Since input is in display currency (USD or IDR)
-    const amountUsd = convertDisplayToStableUsd(amountVal, "USDm");
-    const maxMonthlyUsd = hasMonthlyLimit ? convertDisplayToStableUsd(maxMonthlyVal, "USDm") : 0;
+    // 2. Amounts are already in USD — store directly
+    const amountUsd = amountVal;
+    const maxMonthlyUsd = hasMonthlyLimit ? maxMonthlyVal : 0;
 
     // 3. Save pending remittance details
     const pendingData = {
@@ -348,7 +343,7 @@ export default function CreateRemittance() {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="amount" className="text-xs font-bold text-foreground">
-                Amount ({currency})
+                Amount (USD)
               </Label>
               <Input
                 id="amount"
@@ -409,7 +404,7 @@ export default function CreateRemittance() {
           {hasMonthlyLimit && (
             <div className="space-y-1.5 animate-in fade-in duration-300">
               <Label htmlFor="maxMonthlyAmount" className="text-xs font-bold text-foreground">
-                Max Monthly Amount ({currency})
+                Max Monthly Amount (USD)
               </Label>
               <Input
                 id="maxMonthlyAmount"

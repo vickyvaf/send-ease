@@ -7,14 +7,8 @@ import { formatUnits } from "viem";
 import { Wallet, ChevronUp, Coins } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useCurrency } from "@/context/currency-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens, type StablecoinSymbol } from "@/lib/stablecoin-tokens";
-import {
-  formatDisplayCurrency,
-  tokenAmountToDisplay,
-  type CurrencyRates,
-} from "@/lib/currency-conversion";
 
 import usdcIcon from "@/assets/usdc.png";
 import usdmIcon from "@/assets/usdm.png";
@@ -45,26 +39,20 @@ function AssetTokenCard({
   symbol,
   balance,
   isLoading,
-  displayCurrency,
-  rates,
 }: {
   symbol: StablecoinSymbol;
   balance: number;
   isLoading: boolean;
-  displayCurrency: "USD" | "IDR";
-  rates: CurrencyRates;
 }) {
-  const fiatValue = tokenAmountToDisplay(balance, symbol, displayCurrency, rates);
-
   return (
-    <div className="relative bg-white rounded-2xl p-4 pt-8 shadow-sm h-full border border-white/60">
-      {/* Coin icon floating at top-left */}
-      <div className="absolute -top-3 left-4 h-10 w-10 rounded-full flex items-center justify-center shadow-md border-2 border-white overflow-hidden bg-white">
+    <div className="relative bg-white rounded-2xl p-4 pt-6 shadow-sm h-full border border-white/60">
+      {/* Coin icon floating at top-left - smaller size */}
+      <div className="absolute -top-2 left-4 h-8 w-8 rounded-full flex items-center justify-center shadow-md border-2 border-white overflow-hidden bg-white">
         <Image
           src={tokenIcons[symbol]}
           alt={symbol}
-          width={40}
-          height={40}
+          width={32}
+          height={32}
           className="h-full w-full object-cover"
         />
       </div>
@@ -74,10 +62,7 @@ function AssetTokenCard({
       <p className="text-xs text-gray-500 font-semibold mt-0.5">{symbol}</p>
       {!isLoading && (
         <p className="text-[11px] text-gray-400 mt-1">
-          ≈{" "}
-          {displayCurrency === "IDR"
-            ? `Rp ${formatDisplayCurrency(fiatValue, "IDR")}`
-            : `$${formatDisplayCurrency(fiatValue, "USD")}`}
+          ≈ ${formatAmount(balance)} USD
         </p>
       )}
     </div>
@@ -87,20 +72,13 @@ function AssetTokenCard({
 export function UserBalance() {
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
-  const {
-    currency,
-    rates,
-    ratesLoading,
-    toggleCurrency,
-    formatInDisplayCurrency,
-  } = useCurrency();
 
   const chainId = chain?.id || 42220;
   const tokens = getStablecoinTokens(chainId);
 
   const [tokenBalances, setTokenBalances] = useState<TokenBalance[]>([]);
   const [loading, setLoading] = useState(false);
-  const [assetsExpanded, setAssetsExpanded] = useState(true);
+  const [assetsExpanded, setAssetsExpanded] = useState(false);
 
   const fetchBalances = useCallback(async () => {
     if (!isConnected || !address || !publicClient) return;
@@ -137,12 +115,8 @@ export function UserBalance() {
     fetchBalances();
   }, [fetchBalances]);
 
-  // Compute total balance in display currency
-  const totalDisplayBalance = tokenBalances.reduce((sum, tb) => {
-    return sum + tokenAmountToDisplay(tb.amount, tb.symbol, currency, rates);
-  }, 0);
-
-  const balanceLoading = loading || ratesLoading;
+  // Compute total USD balance (all stablecoins are ~1 USD each)
+  const totalUsdBalance = tokenBalances.reduce((sum, tb) => sum + tb.amount, 0);
 
   if (!isConnected || !address) {
     return (
@@ -167,77 +141,23 @@ export function UserBalance() {
         {/* Header: Total Balance + wallet icon */}
         <div className="flex justify-between items-start mb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <p className="text-xs font-medium opacity-80 tracking-wider">Total Balance</p>
-              <button
-                onClick={toggleCurrency}
-                className="px-1.5 py-0.5 rounded-full bg-white/20 text-[9px] font-extrabold hover:bg-white/30 active:scale-95 transition-all text-white border border-white/10 uppercase select-none tracking-wider"
-                title="Switch Currency"
-              >
-                {currency === "USD" ? "IDR ⇄" : "USD ⇄"}
-              </button>
-            </div>
-            <div
-              className="flex items-baseline gap-1 mt-1 cursor-pointer select-none active:scale-98 transition-transform"
-              title="Click to toggle currency"
-              onClick={toggleCurrency}
-            >
-              {currency === "IDR" ? (
-                <>
-                  <span className="text-sm font-medium opacity-80 mr-0.5">Rp</span>
-                  <span className="text-3xl font-bold">
-                    {balanceLoading ? "---" : formatDisplayCurrency(totalDisplayBalance, "IDR")}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl font-bold">
-                    {balanceLoading ? "---" : formatDisplayCurrency(totalDisplayBalance, "USD")}
-                  </span>
-                  <span className="text-sm font-medium opacity-80">USD</span>
-                </>
-              )}
+            <p className="text-xs font-medium opacity-80 tracking-wider">Total Balance</p>
+            <div className="flex items-baseline gap-1 mt-1">
+              <span className="text-3xl font-bold">
+                {loading ? "---" : formatAmount(totalUsdBalance)}
+              </span>
+              <span className="text-sm font-medium opacity-80">USD</span>
             </div>
           </div>
-          <div className="h-10 w-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
-            <Wallet className="h-5 w-5" />
-          </div>
         </div>
-
-        {/* Send & Receive Buttons */}
-        <div className="flex gap-2">
-          <Button
-            variant="secondary"
-            className="flex-1 font-bold bg-white text-primary hover:bg-white/90"
-            onClick={() => {
-              // Navigate to send/create page
-              window.location.href = "/create";
-            }}
-          >
-            Send
-          </Button>
-          <Button
-            variant="outline"
-            className="flex-1 font-bold border-white/30 text-white bg-transparent hover:bg-white/10 hover:text-white"
-            onClick={() => {
-              // Could be extended with a receive sheet later
-            }}
-          >
-            Receive
-          </Button>
-        </div>
-
-        {/* Divider */}
-        <div className="border-t border-white/25 mt-4" />
 
         {/* Token Cards Grid with expand/collapse */}
         <div
-          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
-            assetsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-          }`}
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${assetsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+            }`}
         >
           <div className="overflow-hidden">
-            <div className="grid grid-cols-2 gap-2.5 pt-6 pb-1">
+            <div className="grid grid-cols-2 gap-3.5 pt-6 pb-1">
               {tokens.map((token) => {
                 const tb = tokenBalances.find((b) => b.symbol === token.symbol);
                 return (
@@ -245,9 +165,7 @@ export function UserBalance() {
                     <AssetTokenCard
                       symbol={token.symbol}
                       balance={tb?.amount ?? 0}
-                      isLoading={balanceLoading}
-                      displayCurrency={currency}
-                      rates={rates}
+                      isLoading={loading}
                     />
                   </div>
                 );
@@ -266,9 +184,8 @@ export function UserBalance() {
             aria-label={assetsExpanded ? "Collapse assets" : "Expand assets"}
           >
             <ChevronUp
-              className={`h-3.5 w-3.5 text-white transition-transform duration-300 ${
-                assetsExpanded ? "" : "rotate-180"
-              }`}
+              className={`h-3.5 w-3.5 text-white transition-transform duration-300 ${assetsExpanded ? "" : "rotate-180"
+                }`}
             />
           </button>
         </div>

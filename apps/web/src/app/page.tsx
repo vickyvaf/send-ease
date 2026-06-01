@@ -7,9 +7,8 @@ import { formatUnits } from "viem";
 import { Plus, Calendar, Clock, ArrowRight, UserPlus, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserBalance } from "@/components/user-balance";
-import { useCurrency } from "@/context/currency-context";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
-import { truncateAddress } from "@/lib/app-utils";
+import { truncateAddress, formatAmount } from "@/lib/app-utils";
 import { useToast } from "@/context/toast-context";
 
 interface RemittanceSchedule {
@@ -39,7 +38,6 @@ interface PaymentLog {
 export default function Home() {
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
-  const { currency, convertStableUsdToDisplay, formatInDisplayCurrency } = useCurrency();
   const { showToast } = useToast();
 
   const [schedules, setSchedules] = useState<RemittanceSchedule[]>([]);
@@ -241,12 +239,11 @@ export default function Home() {
                     </div>
                     <div className="text-right">
                       <div className="font-black text-foreground">
-                        {currency === "IDR" ? "Rp " : ""}
-                        {formatInDisplayCurrency(convertStableUsdToDisplay(item.amount, "USDm"))}
+                        ${formatAmount(item.amount)}
                       </div>
                       {item.hasMonthlyLimit && (
                         <div className="text-xs text-muted-foreground">
-                          Limit: {formatInDisplayCurrency(convertStableUsdToDisplay(item.maxMonthlyAmount, "USDm"))}
+                          Limit: ${formatAmount(item.maxMonthlyAmount)}
                         </div>
                       )}
                     </div>
@@ -287,8 +284,7 @@ export default function Home() {
                 </div>
                 <div className="text-right space-y-0.5">
                   <p className="font-bold text-foreground">
-                    +{currency === "IDR" ? "Rp " : ""}
-                    {formatInDisplayCurrency(convertStableUsdToDisplay(log.amount, "USDm"))}
+                    +${formatAmount(log.amount)}
                   </p>
                   <a
                     href={`https://celoscan.io/tx/${log.txHash}`}

@@ -8,10 +8,9 @@ import { parseUnits, type Hex } from "viem";
 import { ShieldCheck, User, Calendar, DollarSign, Activity, Settings, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/context/toast-context";
-import { useCurrency } from "@/context/currency-context";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { truncateAddress } from "@/lib/app-utils";
+import { truncateAddress, formatAmount } from "@/lib/app-utils";
 
 const ERC20_ABI = [
   {
@@ -42,7 +41,6 @@ export default function ReviewApprove() {
   const publicClient = usePublicClient();
   const { data: walletClient } = useWalletClient();
   const { showToast } = useToast();
-  const { currency, formatInDisplayCurrency } = useCurrency();
 
   const [pending, setPending] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -186,8 +184,7 @@ export default function ReviewApprove() {
             <div>
               <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
               <p className="font-bold text-sm text-foreground">
-                {currency === "IDR" ? "Rp " : ""}
-                {formatInDisplayCurrency(pending.displayAmount)}
+                ${formatAmount(pending.displayAmount)} USD
               </p>
               <p className="text-xs text-slate-400">≈ {pending.amount.toFixed(2)} USDm</p>
             </div>
@@ -214,8 +211,7 @@ export default function ReviewApprove() {
               <div>
                 <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Safety Limits</p>
                 <p className="font-bold text-sm text-foreground">
-                  Max {currency === "IDR" ? "Rp " : ""}
-                  {formatInDisplayCurrency(pending.displayMaxMonthly)} / month
+                  Max ${formatAmount(pending.displayMaxMonthly)} / month
                 </p>
               </div>
             </div>
