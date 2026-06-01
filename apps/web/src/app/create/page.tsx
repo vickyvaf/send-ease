@@ -282,16 +282,9 @@ export default function CreateRemittance() {
     <div className="space-y-6">
       <div className="space-y-1">
         <div className="flex items-center gap-3">
-          <Link
-            href="/"
-            className="h-9 w-9 border border-border bg-white text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/30 rounded-full transition-all shrink-0 flex items-center justify-center shadow-sm hover:scale-105 active:scale-95"
-            aria-label="Back"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
           <h1 className="text-2xl font-bold text-foreground leading-none">New Remittance</h1>
         </div>
-        <p className="text-xs text-muted-foreground pl-12">Describe in text or fill out the schedule manually.</p>
+        <p className="text-xs text-muted-foreground pl-1">Describe in text or fill out the schedule manually.</p>
       </div>
 
       {/* AI Parsing Block */}
