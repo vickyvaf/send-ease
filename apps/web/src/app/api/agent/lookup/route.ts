@@ -7,10 +7,13 @@ const MINIPAY_ISSUER = "0x7888612486844Bb9BE598668081c59A9f7367FBc";
 
 export async function POST(request: Request) {
   try {
-    const { phoneNumber } = await request.json();
+    let { phoneNumber } = await request.json();
     if (!phoneNumber) {
       return NextResponse.json({ success: false, error: "Phone number is required" }, { status: 400 });
     }
+
+    // Sanitize phone number (remove spaces, dashes, parentheses)
+    phoneNumber = phoneNumber.replace(/[\s\-\(\)]/g, "");
 
     // Phone number must start with + and be E.164 compliant
     if (!phoneNumber.startsWith("+") || phoneNumber.length < 8) {
@@ -50,7 +53,13 @@ export async function POST(request: Request) {
     kit.defaultAccount = locals[0];
     const quotaAccount = locals[0];
 
-    const serviceContext = OdisUtils.Query.getServiceContext(odisContext, OdisUtils.Query.OdisAPI.PNP);
+    // Define correct service context. The SDK's built-in Alfajores URL is deprecated/offline.
+    const serviceContext = isMainnet
+      ? OdisUtils.Query.getServiceContext(odisContext, OdisUtils.Query.OdisAPI.PNP)
+      : {
+          odisUrl: "https://us-central1-celo-phone-number-privacy.cloudfunctions.net",
+          odisPubKey: "kPoRxWdEdZ/Nd3uQnp3FJFs54zuiS+ksqvOm9x8vY6KHPG8jrfqysvIRU0wtqYsBKA7SoAsICMBv8C/Fb2ZpDOqhSqvr/sZbZoHmQfvbqrzbtDIPvUIrHgRS0ydJCMsA",
+        };
 
     const authSigner: any = {
       authenticationMethod: OdisUtils.Query.AuthenticationMethod.WALLET_KEY,
@@ -71,6 +80,23 @@ export async function POST(request: Request) {
       obfuscatedIdentifier = response.obfuscatedIdentifier;
     } catch (odisErr: any) {
       console.error("ODIS getObfuscatedIdentifier failed:", odisErr);
+
+      // Fallback for development/testing if relayer has no ODIS quota or lookup fails
+      const isDev = process.env.NODE_ENV === "development" || rpcUrl.includes("localhost") || rpcUrl.includes("127.0.0.1") || rpcUrl.includes("vercel.app") || rpcUrl.includes("netlify.app");
+      if (isDev) {
+        console.log("ODIS lookup failed, using deterministic fallback address for development/testing.");
+        const crypto = require("crypto");
+        const hash = crypto.createHash("sha256").update(phoneNumber).digest("hex");
+        const mockAddress = `0x${hash.slice(0, 40)}`;
+        return NextResponse.json({
+          success: true,
+          phoneNumber,
+          walletAddress: mockAddress,
+          isMock: true,
+          warning: "Using fallback address for testing (ODIS quota limit)."
+        });
+      }
+
       return NextResponse.json({
         success: false,
         error: `ODIS lookup failed: ${odisErr.message || odisErr}`
@@ -83,6 +109,24 @@ export async function POST(request: Request) {
       const resolvedAddress = accounts[0] || null;
 
       console.log(`ODIS lookup completed. Resolved address: ${resolvedAddress}`);
+
+      if (!resolvedAddress) {
+        // Fallback for development/testing if number is not registered on MiniPay
+        const isDev = process.env.NODE_ENV === "development" || rpcUrl.includes("localhost") || rpcUrl.includes("127.0.0.1") || rpcUrl.includes("vercel.app") || rpcUrl.includes("netlify.app");
+        if (isDev) {
+          console.log("Phone number not registered on MiniPay. Using deterministic mock address for development/testing.");
+          const crypto = require("crypto");
+          const hash = crypto.createHash("sha256").update(phoneNumber).digest("hex");
+          const mockAddress = `0x${hash.slice(0, 40)}`;
+          return NextResponse.json({
+            success: true,
+            phoneNumber,
+            walletAddress: mockAddress,
+            isMock: true,
+            warning: "Mock address generated (Phone number not registered on MiniPay)."
+          });
+        }
+      }
 
       return NextResponse.json({
         success: true,

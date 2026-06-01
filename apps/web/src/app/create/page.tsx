@@ -43,10 +43,11 @@ export default function CreateRemittance() {
     setPhoneResolutionStatus({ type: "idle", message: "" });
 
     try {
+      const sanitizedPhone = phone.replace(/[\s\-\(\)]/g, "");
       const res = await fetch("/api/agent/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: phone.trim() }),
+        body: JSON.stringify({ phoneNumber: sanitizedPhone }),
       });
 
       const data = await res.json();
@@ -54,9 +55,11 @@ export default function CreateRemittance() {
         setRecipientAddress(data.walletAddress);
         setPhoneResolutionStatus({
           type: "success",
-          message: `Linked wallet found: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`
+          message: data.warning 
+            ? `${data.warning} Address: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}` 
+            : `Linked wallet found: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`
         });
-        showToast("Recipient wallet address found!", "success");
+        showToast(data.warning || "Recipient wallet address found!", "success");
       } else if (res.ok && data.success && !data.walletAddress) {
         setPhoneResolutionStatus({
           type: "error",
