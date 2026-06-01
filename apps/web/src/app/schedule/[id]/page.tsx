@@ -278,12 +278,12 @@ export default function ScheduleDetail({ params }: PageProps) {
           </div>
           <div className="space-y-1">
             <h1 className="text-xl font-bold text-foreground">{schedule.recipientName}</h1>
-            <p className="text-[10px] text-muted-foreground font-mono">{schedule.recipient}</p>
+            <p className="text-xs text-muted-foreground font-mono">{schedule.recipient}</p>
             {schedule.recipientPhone && <p className="text-xs text-muted-foreground">{schedule.recipientPhone}</p>}
           </div>
 
           <div className="flex items-center justify-center gap-2">
-            <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(schedule.status)}`}>
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(schedule.status)}`}>
               {getStatusLabel(schedule.status)}
             </span>
             <span className="text-xs text-muted-foreground font-semibold bg-slate-100 px-2 py-0.5 rounded-full">
@@ -292,7 +292,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           </div>
 
           <div className="text-center pt-2">
-            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
+            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
             <p className="text-2xl font-black text-foreground">
               {currency === "IDR" ? "Rp " : ""}
               {formatInDisplayCurrency(convertStableUsdToDisplay(schedule.amount, "USDm"))}
@@ -335,7 +335,7 @@ export default function ScheduleDetail({ params }: PageProps) {
               <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-slate-50/50">
                 <div>
                   <p className="text-xs font-bold text-foreground">Enable Monthly Limit</p>
-                  <p className="text-[9px] text-muted-foreground">Automatically pause if total monthly transfers exceed this value</p>
+                  <p className="text-xs text-muted-foreground">Automatically pause if total monthly transfers exceed this value</p>
                 </div>
                 <input
                   type="checkbox"
@@ -431,7 +431,7 @@ export default function ScheduleDetail({ params }: PageProps) {
               >
                 <div className="space-y-0.5">
                   <p className="font-bold text-foreground">Payment Transferred</p>
-                  <p className="text-[10px] text-muted-foreground">{log.timestamp}</p>
+                  <p className="text-xs text-muted-foreground">{log.timestamp}</p>
                 </div>
                 <div className="text-right space-y-0.5">
                   <p className="font-bold text-foreground">
@@ -442,7 +442,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                     href={`https://celoscan.io/tx/${log.txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[9px] text-[#09955F] hover:underline flex items-center justify-end gap-0.5"
+                    className="text-xs text-[#09955F] hover:underline flex items-center justify-end gap-0.5"
                   >
                     View Tx <ExternalLink size={8} />
                   </a>

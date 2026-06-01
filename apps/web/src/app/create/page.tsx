@@ -298,7 +298,7 @@ export default function CreateRemittance() {
           <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-slate-50/30">
             <div>
               <p className="text-xs font-bold text-foreground">Enable Monthly Limit</p>
-              <p className="text-[10px] text-muted-foreground">Pause automatically if spending exceeds this limit</p>
+              <p className="text-xs text-muted-foreground">Pause automatically if spending exceeds this limit</p>
             </div>
             <input
               type="checkbox"

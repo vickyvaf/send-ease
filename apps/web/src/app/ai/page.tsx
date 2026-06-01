@@ -273,7 +273,7 @@ export default function AIAgent() {
                       {msg.actionData && msg.actionData.type === "create_schedule" && (
                         <div className="mt-2 p-4 bg-slate-50 border border-border rounded-xl space-y-3 text-xs">
                           <p className="font-bold text-slate-800 flex items-center gap-1">📋 Planned Schedule Remittance</p>
-                          <div className="grid grid-cols-2 gap-1.5 text-[11px] text-slate-700">
+                          <div className="grid grid-cols-2 gap-1.5 text-xs text-slate-700">
                             <span className="text-slate-500">Recipient Name:</span>
                             <span className="font-semibold">{msg.actionData.recipientName}</span>
                             
@@ -319,14 +319,14 @@ export default function AIAgent() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRetry(msg.content)}
-                      className="bg-white border border-[#E4E4E7] text-[#09955F] hover:bg-slate-50 font-bold px-2 py-1 rounded-lg text-[9px] active:scale-95 transition-transform flex items-center gap-1"
+                      className="bg-white border border-[#E4E4E7] text-[#09955F] hover:bg-slate-50 font-bold px-2 py-1 rounded-lg text-xs active:scale-95 transition-transform flex items-center gap-1"
                     >
                       <RefreshCw className="h-2.5 w-2.5" />
                       Retry
                     </button>
                     <button
                       onClick={() => handleEdit(msg.content)}
-                      className="bg-white border border-[#E4E4E7] text-slate-500 hover:bg-slate-50 font-bold px-2 py-1 rounded-lg text-[9px] active:scale-95 transition-transform flex items-center gap-1"
+                      className="bg-white border border-[#E4E4E7] text-slate-500 hover:bg-slate-50 font-bold px-2 py-1 rounded-lg text-xs active:scale-95 transition-transform flex items-center gap-1"
                     >
                       <Pencil className="h-2.5 w-2.5" />
                       Edit
@@ -343,7 +343,7 @@ export default function AIAgent() {
               <div className="h-8 w-8 rounded-full bg-slate-50 text-[#09955F] flex-shrink-0 flex items-center justify-center border border-border shadow-none">
                 <Bot className="h-4 w-4 animate-pulse" />
               </div>
-              <div className="p-3 rounded-xl text-sm bg-white border border-border shadow-none rounded-tl-none text-foreground flex items-center gap-1 min-h-[40px]">
+              <div className="p-3 rounded-xl text-sm bg-white border border-border shadow-none rounded-tl-none text-foreground flex items-center gap-1 min-h-10">
                 <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
                 <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
                 <span className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce"></span>
@@ -360,7 +360,7 @@ export default function AIAgent() {
                 <button
                   key={i}
                   onClick={() => setInput(s)}
-                  className="text-xs bg-white border border-border px-4 py-3 rounded-xl hover:border-primary hover:text-[#09955F] transition-all text-left font-medium text-slate-700"
+                  className="w-fit text-xs bg-white border border-border px-4 py-3 rounded-xl hover:border-primary hover:text-[#09955F] transition-all text-left font-medium text-slate-700"
                 >
                   {s}
                 </button>
@@ -417,7 +417,7 @@ export default function AIAgent() {
             ))}
 
             {sessions.length === 0 && (
-              <div className="text-[10px] text-muted-foreground italic px-2 flex items-center gap-1.5">
+              <div className="text-xs text-muted-foreground italic px-2 flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
                 No previous chats
               </div>

@@ -212,7 +212,7 @@ export default function Home() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-foreground">{item.recipientName}</span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(item.status)}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(item.status)}`}>
                           {getStatusLabel(item.status)}
                         </span>
                       </div>
@@ -235,7 +235,7 @@ export default function Home() {
                         {formatInDisplayCurrency(convertStableUsdToDisplay(item.amount, "USDm"))}
                       </div>
                       {item.hasMonthlyLimit && (
-                        <div className="text-[10px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           Limit: {formatInDisplayCurrency(convertStableUsdToDisplay(item.maxMonthlyAmount, "USDm"))}
                         </div>
                       )}
@@ -272,7 +272,7 @@ export default function Home() {
                   </div>
                   <div>
                     <p className="font-bold text-foreground">Sent to {log.recipient}</p>
-                    <p className="text-[10px] text-muted-foreground">{log.timestamp}</p>
+                    <p className="text-xs text-muted-foreground">{log.timestamp}</p>
                   </div>
                 </div>
                 <div className="text-right space-y-0.5">
@@ -284,7 +284,7 @@ export default function Home() {
                     href={`https://celoscan.io/tx/${log.txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[9px] text-[#09955F] hover:underline block"
+                    className="text-xs text-[#09955F] hover:underline block"
                   >
                     View Tx
                   </a>

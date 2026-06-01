@@ -83,19 +83,16 @@ export function ConnectButton() {
                   >
                     {chain.hasIcon && (
                       <div
+                        className="w-4 h-4 rounded-full overflow-hidden"
                         style={{
                           background: chain.iconBackground,
-                          width: 16,
-                          height: 16,
-                          borderRadius: 999,
-                          overflow: "hidden",
                         }}
                       >
                         {chain.iconUrl && (
                           <img
                             alt={chain.name ?? "Chain icon"}
                             src={chain.iconUrl}
-                            style={{ width: 16, height: 16 }}
+                            className="w-4 h-4"
                           />
                         )}
                       </div>

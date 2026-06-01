@@ -171,10 +171,10 @@ export default function ReviewApprove() {
               <User size={16} />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Recipient</p>
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Recipient</p>
               <p className="font-bold text-sm text-foreground">{pending.recipientName}</p>
-              <p className="text-[11px] font-mono text-slate-400">{truncateAddress(pending.recipientAddress)}</p>
-              {pending.recipientPhone && <p className="text-[11px] text-slate-400">{pending.recipientPhone}</p>}
+              <p className="text-xs font-mono text-slate-400">{truncateAddress(pending.recipientAddress)}</p>
+              {pending.recipientPhone && <p className="text-xs text-slate-400">{pending.recipientPhone}</p>}
             </div>
           </div>
 
@@ -184,12 +184,12 @@ export default function ReviewApprove() {
               <DollarSign size={16} />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
               <p className="font-bold text-sm text-foreground">
                 {currency === "IDR" ? "Rp " : ""}
                 {formatInDisplayCurrency(pending.displayAmount)}
               </p>
-              <p className="text-[11px] text-slate-400">≈ {pending.amount.toFixed(2)} USDm</p>
+              <p className="text-xs text-slate-400">≈ {pending.amount.toFixed(2)} USDm</p>
             </div>
           </div>
 
@@ -199,9 +199,9 @@ export default function ReviewApprove() {
               <Calendar size={16} />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Schedule & Start</p>
+              <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Schedule & Start</p>
               <p className="font-bold text-sm text-foreground">{pending.frequency}</p>
-              <p className="text-[11px] text-slate-400">Starts: {pending.startDate}</p>
+              <p className="text-xs text-slate-400">Starts: {pending.startDate}</p>
             </div>
           </div>
 
@@ -212,7 +212,7 @@ export default function ReviewApprove() {
                 <Settings size={16} />
               </div>
               <div>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Safety Limits</p>
+                <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Safety Limits</p>
                 <p className="font-bold text-sm text-foreground">
                   Max {currency === "IDR" ? "Rp " : ""}
                   {formatInDisplayCurrency(pending.displayMaxMonthly)} / month
