@@ -40,6 +40,7 @@ This component runs on-demand when the user uses the natural language prompt inp
   - `frequency` (e.g., `"Monthly"`)
   - `startDate` (e.g., Next occurrence of date 1)
 * **LLM Engine**: Configured to parse fields accurately, requesting clarification or flagging missing info if crucial fields (like amount or recipient) are ambiguous.
+* **Casing & Normalization**: Output parameters (like currency codes `USDm`) are preserved exactly with their correct standard casing. Since frontend display components do not use CSS `uppercase` text styling, the agent must output normalized values to avoid layout or format discrepancies.
 
 ### 2.2 Execution & Automation Agent
 This component runs as a background service (scheduler daemon) using a dedicated agent hot-wallet.

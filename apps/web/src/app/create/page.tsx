@@ -220,7 +220,7 @@ export default function CreateRemittance() {
       {/* AI Parsing Block */}
       <Card className="border border-primary/20 bg-primary/[0.02] rounded-2xl shadow-none">
         <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-1.5 text-primary text-xs font-bold uppercase tracking-wider">
+          <div className="flex items-center gap-1.5 text-primary text-xs font-bold tracking-wider">
             <Sparkles size={14} />
             <span>AI Intent Assistant</span>
           </div>
@@ -250,7 +250,7 @@ export default function CreateRemittance() {
 
       {/* Manual Input Form */}
       <div className="space-y-4">
-        <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">Schedule Details</h2>
+        <h2 className="text-sm font-bold text-foreground tracking-wider">Schedule Details</h2>
 
         <div className="space-y-3">
           {/* Recipient Name */}

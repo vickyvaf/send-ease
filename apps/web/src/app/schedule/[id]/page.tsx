@@ -289,7 +289,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           </div>
 
           <div className="flex items-center justify-center gap-2">
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(schedule.status)}`}>
+            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold tracking-wider ${getStatusBadgeClass(schedule.status)}`}>
               {getStatusLabel(schedule.status)}
             </span>
             <span className="text-xs text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded-full">
@@ -298,7 +298,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           </div>
 
           <div className="text-center pt-2">
-            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Payment Amount</p>
+            <p className="text-xs text-muted-foreground font-bold tracking-wider">Payment Amount</p>
             <p className="text-2xl font-black text-foreground">
               ${formatAmount(schedule.amount)} USD
             </p>
@@ -310,7 +310,7 @@ export default function ScheduleDetail({ params }: PageProps) {
       <Card className="border border-border rounded-2xl shadow-none">
         <CardContent className="p-5 space-y-4">
           <div className="flex justify-between items-center pb-2 border-b border-border">
-            <h2 className="text-xs font-bold text-foreground uppercase tracking-wider">Remittance Settings</h2>
+            <h2 className="text-xs font-bold text-foreground tracking-wider">Remittance Settings</h2>
             {(schedule.status === 0 || schedule.status === 1) && !isEditing && (
               <button
                 onClick={() => setIsEditing(true)}
@@ -425,7 +425,7 @@ export default function ScheduleDetail({ params }: PageProps) {
 
       {/* Logs section */}
       <div className="space-y-3">
-        <h2 className="text-sm font-bold text-foreground uppercase tracking-wider px-1">Payment History Log</h2>
+        <h2 className="text-sm font-bold text-foreground tracking-wider px-1">Payment History Log</h2>
         {historyLogs.length > 0 ? (
           <div className="space-y-2">
             {historyLogs.map((log, idx) => (

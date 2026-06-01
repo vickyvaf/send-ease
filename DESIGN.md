@@ -298,6 +298,8 @@ Tidak menggunakan icon berwarna gradient atau ilustrasi kompleks. Bila perlu ilu
 - **No hardcoded sizes / arbitrary classes**:
   - Jangan melakukan hardcoding kelas CSS/Tailwind kustom/arbitrer untuk styling teks, padding, atau margin (seperti `text-[10px]` atau `p-[13px]`).
   - Selalu gunakan variabel / token utility yang sudah disediakan secara default (misalnya `text-xs`, `text-sm`, `text-base`, `text-lg`, `p-3`, `p-4`, dsb.).
+- **No uppercase text transformation**:
+  - Jangan menggunakan class `uppercase` pada visual labels, badges, atau text styling lainnya demi konsistensi casing visual yang lebih natural.
 - **Mobile-first**:
   - Semua komponen harus nyaman digunakan di layar kecil.
 - **MiniPay-friendly**:

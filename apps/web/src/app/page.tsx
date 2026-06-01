@@ -7,6 +7,7 @@ import { formatUnits } from "viem";
 import { Plus, Calendar, Clock, ArrowRight, UserPlus, FileText } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { UserBalance } from "@/components/user-balance";
+import { SwapWidget } from "@/components/swap-widget";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
 import { truncateAddress, formatAmount } from "@/lib/app-utils";
 import { useToast } from "@/context/toast-context";
@@ -188,6 +189,9 @@ export default function Home() {
       {/* Wallet Balance & copy */}
       <UserBalance />
 
+      {/* Swap/Convert Widget */}
+      <SwapWidget />
+
       {/* Quick Action Button */}
       {isConnected && (
         <Link href="/create" className="block">
@@ -220,7 +224,7 @@ export default function Home() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-foreground">{item.recipientName}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(item.status)}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-bold tracking-wider ${getStatusBadgeClass(item.status)}`}>
                           {getStatusLabel(item.status)}
                         </span>
                       </div>

@@ -45,23 +45,23 @@ function AssetTokenCard({
   isLoading: boolean;
 }) {
   return (
-    <div className="relative bg-white rounded-2xl p-4 pt-6 shadow-sm h-full border border-white/60">
+    <div className="relative bg-slate-50/70 rounded-2xl p-4 pt-6 shadow-xs h-full border border-slate-100">
       {/* Coin icon floating at top-left - smaller size */}
-      <div className="absolute -top-2 left-4 h-8 w-8 rounded-full flex items-center justify-center shadow-md border-2 border-white overflow-hidden bg-white">
+      <div className="absolute -top-2 left-4 h-7 w-7 rounded-full flex items-center justify-center shadow-xs border border-slate-200/80 overflow-hidden bg-white">
         <Image
           src={tokenIcons[symbol]}
           alt={symbol}
-          width={32}
-          height={32}
+          width={28}
+          height={28}
           className="h-full w-full object-cover"
         />
       </div>
-      <p className="text-xl font-bold text-gray-900 leading-tight">
+      <p className="text-lg font-bold text-slate-800 leading-tight">
         {isLoading ? "—" : formatAmount(balance)}
       </p>
-      <p className="text-xs text-gray-500 font-semibold mt-0.5">{symbol}</p>
+      <p className="text-[10px] text-slate-400 font-bold mt-0.5 tracking-wider">{symbol}</p>
       {!isLoading && (
-        <p className="text-[11px] text-gray-400 mt-1">
+        <p className="text-[11px] text-slate-400 mt-1 font-medium">
           ≈ ${formatAmount(balance)} USD
         </p>
       )}
@@ -120,76 +120,76 @@ export function UserBalance() {
 
   if (!isConnected || !address) {
     return (
-      <Card className="border border-border bg-white shadow-none">
-        <CardContent className="p-6 text-center space-y-2">
-          <Coins className="h-10 w-10 text-slate-400 mx-auto" />
-          <h3 className="font-bold text-foreground">Wallet Disconnected</h3>
-          <p className="text-xs text-muted-foreground">
-            Connect your Celo MiniPay wallet to view your balance and automate scheduled remittances.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="w-full bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm text-center space-y-3 text-slate-900">
+        <Coins className="h-10 w-10 text-slate-400 mx-auto" />
+        <h3 className="font-bold text-slate-800">Wallet Disconnected</h3>
+        <p className="text-xs text-slate-400">
+          Connect your Celo MiniPay wallet to view your balance and automate scheduled remittances.
+        </p>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-primary text-primary-foreground border-none overflow-hidden relative animate-in fade-in duration-300">
-      {/* Decorative background glow */}
-      <div className="absolute -right-4 -top-4 h-24 w-24 bg-white/10 rounded-full blur-2xl" />
-
-      <CardContent className="p-6 relative">
-        {/* Header: Total Balance + wallet icon */}
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <p className="text-xs font-medium opacity-80 tracking-wider">Total Balance</p>
-            <div className="flex items-baseline gap-1 mt-1">
-              <span className="text-3xl font-bold">
-                {loading ? "---" : formatAmount(totalUsdBalance)}
-              </span>
-              <span className="text-sm font-medium opacity-80">USD</span>
-            </div>
+    <div className="w-full bg-white border border-slate-200/80 rounded-3xl p-4 shadow-sm text-slate-900 relative animate-in fade-in duration-300">
+      {/* Total Balance Panel */}
+      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between h-[100px]">
+        <div className="flex justify-between items-center w-full">
+          <span className="text-xs font-bold text-slate-400 tracking-wider">Total Balance</span>
+          <div className="p-1.5 rounded-full bg-white border border-slate-200/60 shadow-xs text-slate-400">
+            <Wallet className="w-4 h-4" />
           </div>
         </div>
+        <div className="flex flex-col mt-0.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-4xl font-bold text-slate-900 tracking-tight">
+              {loading ? "---" : formatAmount(totalUsdBalance)}
+            </span>
+            <span className="text-xs font-bold text-slate-400">USD</span>
+          </div>
+        </div>
+      </div>
 
-        {/* Token Cards Grid with expand/collapse */}
-        <div
-          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${assetsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-            }`}
+      {/* Token Cards Grid with expand/collapse */}
+      <div
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+          assetsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+        }`}
+      >
+        <div className="overflow-hidden">
+          <div className="grid grid-cols-2 gap-3 pt-4 pb-1">
+            {tokens.map((token) => {
+              const tb = tokenBalances.find((b) => b.symbol === token.symbol);
+              return (
+                <div key={token.symbol} className="h-full">
+                  <AssetTokenCard
+                    symbol={token.symbol}
+                    balance={tb?.amount ?? 0}
+                    isLoading={loading}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Chevron toggle */}
+      <div className="flex justify-center -mb-4 mt-2">
+        <button
+          type="button"
+          onClick={() => setAssetsExpanded((prev) => !prev)}
+          className="h-5 w-10 rounded-t-full bg-slate-100 hover:bg-slate-200/80 flex items-center justify-center transition-colors active:scale-95 border-t border-x border-slate-200/40"
+          aria-expanded={assetsExpanded}
+          aria-label={assetsExpanded ? "Collapse assets" : "Expand assets"}
         >
-          <div className="overflow-hidden">
-            <div className="grid grid-cols-2 gap-3.5 pt-6 pb-1">
-              {tokens.map((token) => {
-                const tb = tokenBalances.find((b) => b.symbol === token.symbol);
-                return (
-                  <div key={token.symbol} className="h-full">
-                    <AssetTokenCard
-                      symbol={token.symbol}
-                      balance={tb?.amount ?? 0}
-                      isLoading={loading}
-                    />
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Chevron toggle */}
-        <div className="flex justify-center -mb-6 mt-3">
-          <button
-            type="button"
-            onClick={() => setAssetsExpanded((prev) => !prev)}
-            className="h-5 w-10 rounded-t-full bg-primary-foreground/15 hover:bg-primary-foreground/25 flex items-center justify-center transition-colors active:scale-95"
-            aria-expanded={assetsExpanded}
-            aria-label={assetsExpanded ? "Collapse assets" : "Expand assets"}
-          >
-            <ChevronUp
-              className={`h-3.5 w-3.5 text-white transition-transform duration-300 ${assetsExpanded ? "" : "rotate-180"
-                }`}
-            />
-          </button>
-        </div>
-      </CardContent>
-    </Card>
+          <ChevronUp
+            className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-300 ${
+              assetsExpanded ? "" : "rotate-180"
+            }`}
+          />
+        </button>
+      </div>
+    </div>
   );
 }
