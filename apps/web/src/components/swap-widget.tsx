@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { ArrowUpDown, ChevronDown, Send } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Send, Search } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
@@ -13,6 +13,8 @@ import { useAccount, usePublicClient } from "wagmi";
 import usdcIcon from "@/assets/usdc.png";
 import usdmIcon from "@/assets/usdm.png";
 import usdtIcon from "@/assets/usdt.png";
+
+import { countries } from "@/constants/countries";
 
 type StablecoinSymbol = "USDm" | "USDC" | "USDT";
 
@@ -31,6 +33,11 @@ export function SwapWidget() {
   const [sellToken, setSellToken] = useState<StablecoinSymbol>("USDm");
   const [buyToken, setBuyToken] = useState<StablecoinSymbol | "">("USDm");
   const [tokenBalance, setTokenBalance] = useState<number>(0);
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
+  const [selectedPrefix, setSelectedPrefix] = useState<string>("+62");
+  const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [dropdownPosition, setDropdownPosition] = useState<"top" | "bottom">("bottom");
 
   const [showSellDropdown, setShowSellDropdown] = useState(false);
   const [showBuyDropdown, setShowBuyDropdown] = useState(false);
@@ -39,6 +46,7 @@ export function SwapWidget() {
 
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
+  const phoneDropdownRef = useRef<HTMLDivElement>(null);
   const hasInitializedRef = useRef(false);
 
   // Close dropdowns on outside click
@@ -50,12 +58,45 @@ export function SwapWidget() {
       if (buyDropdownRef.current && !buyDropdownRef.current.contains(event.target as Node)) {
         setShowBuyDropdown(false);
       }
+      if (phoneDropdownRef.current && !phoneDropdownRef.current.contains(event.target as Node)) {
+        setShowPhoneDropdown(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Dynamic positioning logic for phone prefix dropdown
+  useEffect(() => {
+    function updateDropdownPosition() {
+      if (phoneDropdownRef.current) {
+        const rect = phoneDropdownRef.current.getBoundingClientRect();
+        const windowHeight = window.innerHeight;
+        const dropdownHeight = 240; // Max height of dropdown (max-h-60)
+        const spaceBelow = windowHeight - rect.bottom;
+        const spaceAbove = rect.top;
+
+        if (spaceBelow < dropdownHeight && spaceAbove > dropdownHeight) {
+          setDropdownPosition("top");
+        } else {
+          setDropdownPosition("bottom");
+        }
+      }
+    }
+
+    if (showPhoneDropdown) {
+      updateDropdownPosition();
+      // Scroll listener on capture phase to detect scrolls in parent scrollable views
+      window.addEventListener("scroll", updateDropdownPosition, true);
+      window.addEventListener("resize", updateDropdownPosition);
+    }
+    return () => {
+      window.removeEventListener("scroll", updateDropdownPosition, true);
+      window.removeEventListener("resize", updateDropdownPosition);
+    };
+  }, [showPhoneDropdown]);
 
   const chainId = chain?.id || 42220;
 
@@ -167,16 +208,34 @@ export function SwapWidget() {
       showToast("Please enter an amount to transfer", "error");
       return;
     }
+    
+    let cleanedNumber = phoneNumber.trim().replace(/[^\d]/g, "");
+    if (cleanedNumber.startsWith("0")) {
+      cleanedNumber = cleanedNumber.substring(1);
+    }
+    if (!cleanedNumber) {
+      showToast("Please enter a contact number", "error");
+      return;
+    }
+    
+    const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
 
     setIsTransferring(true);
-    showToast(`Initiating transfer: ${sellAmount} ${sellToken} to ${buyToken}...`, "success");
+    showToast(`Initiating transfer: ${sellAmount} ${sellToken} to ${buyToken} (${fullPhoneNumber})...`, "success");
 
     setTimeout(() => {
       setIsTransferring(false);
       showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${buyToken}!`, "success");
       setSellAmount("");
+      setPhoneNumber("");
     }, 2000);
   };
+
+  const filteredCountries = countries.filter(
+    (c) =>
+      c.country.toLowerCase().includes(countrySearch.toLowerCase()) ||
+      c.code.includes(countrySearch)
+  );
 
   const tokensList: StablecoinSymbol[] = ["USDm", "USDC", "USDT"];
 
@@ -346,6 +405,84 @@ export function SwapWidget() {
               ${sellAmount ? parseFloat(sellAmount.replace(",", ".")) || 0 : 0}
             </span>
           </div>
+        </div>
+      </div>
+
+      {/* Contact Number Input */}
+      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col h-fit relative">
+        <label className="text-xs font-bold text-slate-400 tracking-wider mb-2">Recipient Contact Number</label>
+        
+        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-2 shadow-xs relative">
+          {/* Prefix Selector Dropdown */}
+          <div className="relative shrink-0" ref={phoneDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
+              className="flex items-center gap-1 hover:bg-slate-50 active:scale-95 transition-all text-sm font-bold text-slate-800 pr-2 border-r border-slate-200"
+            >
+              <span>{countries.find((c) => c.code === selectedPrefix)?.flag || "🏳️"}</span>
+              <span>{selectedPrefix}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            </button>
+
+            {showPhoneDropdown && (
+              <div className={`absolute left-0 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-30 animate-in fade-in duration-150 flex flex-col max-h-60 ${
+                dropdownPosition === "top"
+                  ? "bottom-full mb-2 origin-bottom slide-in-from-bottom-2"
+                  : "mt-3 origin-top slide-in-from-top-2"
+              }`}>
+                {/* Search country */}
+                <div className="px-2 pb-1.5 border-b border-slate-100 flex items-center gap-1">
+                  <Search className="w-3 h-3 text-slate-400 shrink-0" />
+                  <input
+                    type="text"
+                    placeholder="Search country..."
+                    value={countrySearch}
+                    onChange={(e) => setCountrySearch(e.target.value)}
+                    className="w-full text-xs border-none outline-none p-0 focus:ring-0 placeholder-slate-300 text-slate-700"
+                  />
+                </div>
+                
+                <div className="overflow-y-auto flex-1 mt-1">
+                  {filteredCountries.map((c) => (
+                    <button
+                      key={`${c.code}-${c.country}`}
+                      type="button"
+                      onClick={() => {
+                        setSelectedPrefix(c.code);
+                        setShowPhoneDropdown(false);
+                        setCountrySearch("");
+                      }}
+                      className={`flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-50 transition-colors ${
+                        selectedPrefix === c.code ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
+                      }`}
+                    >
+                      <span className="text-xs flex items-center gap-1.5">
+                        <span>{c.flag}</span>
+                        <span className="truncate max-w-[100px]">{c.country}</span>
+                      </span>
+                      <span className="text-xs font-bold text-slate-400">{c.code}</span>
+                    </button>
+                  ))}
+                  {filteredCountries.length === 0 && (
+                    <div className="text-xs text-slate-400 text-center py-2">No countries found</div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <input
+            type="tel"
+            placeholder="8123456789"
+            value={phoneNumber}
+            onChange={(e) => {
+              // Only allow digits, spaces, hyphens
+              const val = e.target.value.replace(/[^\d\s\-]/g, "");
+              setPhoneNumber(val);
+            }}
+            className="bg-transparent border-none outline-none text-sm font-semibold p-0 text-slate-900 placeholder-slate-300 w-full focus:ring-0"
+          />
         </div>
       </div>
 
