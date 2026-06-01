@@ -5,6 +5,10 @@ import Image from "next/image";
 import { ArrowDown, ArrowUp, ChevronDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
+import { useAccount, usePublicClient } from "wagmi";
+import { formatUnits } from "viem";
+import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
+import { formatAmount } from "@/lib/app-utils";
 
 import usdcIcon from "@/assets/usdc.png";
 import usdmIcon from "@/assets/usdm.png";
@@ -20,17 +24,22 @@ const tokenIcons = {
 
 export function SwapWidget() {
   const { showToast } = useToast();
+  const { address, isConnected, chain } = useAccount();
+  const publicClient = usePublicClient();
+
   const [sellAmount, setSellAmount] = useState<string>("");
   const [sellToken, setSellToken] = useState<StablecoinSymbol>("USDm");
   const [buyToken, setBuyToken] = useState<StablecoinSymbol | "">("USDm");
+  const [tokenBalance, setTokenBalance] = useState<number>(0);
 
   const [showSellDropdown, setShowSellDropdown] = useState(false);
   const [showBuyDropdown, setShowBuyDropdown] = useState(false);
-  const [isSwapping, setIsSwapping] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
   const [rotation, setRotation] = useState(0);
 
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
+  const hasInitializedRef = useRef(false);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -48,16 +57,105 @@ export function SwapWidget() {
     };
   }, []);
 
+  const chainId = chain?.id || 42220;
+
+  // Reset initialized flag if address changes
+  useEffect(() => {
+    hasInitializedRef.current = false;
+  }, [address]);
+
+  // Fetch balances for all tokens to determine which one has the highest balance initially
+  useEffect(() => {
+    async function initDefaultToken() {
+      if (!isConnected || !address || !publicClient || hasInitializedRef.current) return;
+      try {
+        const tokens = getStablecoinTokens(chainId);
+        const balances = await Promise.all(
+          tokens.map(async (token) => {
+            try {
+              const raw = await publicClient.readContract({
+                address: token.address,
+                abi: [
+                  {
+                    inputs: [{ name: "account", type: "address" }],
+                    name: "balanceOf",
+                    outputs: [{ name: "", type: "uint256" }],
+                    stateMutability: "view",
+                    type: "function",
+                  },
+                ] as const,
+                functionName: "balanceOf",
+                args: [address],
+              });
+              return {
+                symbol: token.symbol,
+                amount: parseFloat(formatUnits(raw as bigint, token.decimals)),
+              };
+            } catch (e) {
+              return { symbol: token.symbol, amount: 0 };
+            }
+          })
+        );
+
+        if (balances.length > 0 && !hasInitializedRef.current) {
+          const highest = balances.reduce((prev, current) => {
+            return prev.amount >= current.amount ? prev : current;
+          });
+          setSellToken(highest.symbol);
+          setTokenBalance(highest.amount);
+          setBuyToken(highest.symbol === "USDm" ? "USDC" : "USDm");
+          hasInitializedRef.current = true;
+        }
+      } catch (e) {
+        console.error("Failed to determine default token with highest balance", e);
+      }
+    }
+    initDefaultToken();
+  }, [isConnected, address, publicClient, chainId]);
+
+  // Fetch balance for the selected sell token
+  useEffect(() => {
+    async function fetchBalance() {
+      if (!isConnected || !address || !publicClient) return;
+      try {
+        const tokens = getStablecoinTokens(chainId);
+        const token = tokens.find((t) => t.symbol === sellToken);
+        if (!token) return;
+
+        const raw = await publicClient.readContract({
+          address: token.address,
+          abi: [
+            {
+              inputs: [{ name: "account", type: "address" }],
+              name: "balanceOf",
+              outputs: [{ name: "", type: "uint256" }],
+              stateMutability: "view",
+              type: "function",
+            },
+          ] as const,
+          functionName: "balanceOf",
+          args: [address],
+        });
+        setTokenBalance(parseFloat(formatUnits(raw as bigint, token.decimals)));
+      } catch (e) {
+        console.error("Failed to fetch balance in SwapWidget", e);
+        setTokenBalance(0);
+      }
+    }
+    fetchBalance();
+  }, [sellToken, isConnected, address, publicClient, chainId]);
+
   const handleSwapTokens = () => {
     setRotation((prev) => prev + 180);
     if (!buyToken) {
       // If buy token is not selected yet, swap sellToken with default or just show warning
-      showToast("Select a buy token first to swap directions!", "info");
+      showToast("Select a buy token first to swap directions!", "success");
       return;
     }
     const tempToken = sellToken;
     setSellToken(buyToken);
     setBuyToken(tempToken);
+    setSellAmount(""); // Reset amount to prevent mismatch with new token's balance
   };
 
   const handleAction = () => {
@@ -66,16 +164,16 @@ export function SwapWidget() {
       return;
     }
     if (!sellAmount || parseFloat(sellAmount) <= 0) {
-      showToast("Please enter an amount to swap", "error");
+      showToast("Please enter an amount to transfer", "error");
       return;
     }
 
-    setIsSwapping(true);
-    showToast(`Initiating swap: ${sellAmount} ${sellToken} to ${buyToken}...`, "info");
+    setIsTransferring(true);
+    showToast(`Initiating transfer: ${sellAmount} ${sellToken} to ${buyToken}...`, "success");
 
     setTimeout(() => {
-      setIsSwapping(false);
-      showToast(`Successfully swapped ${sellAmount} ${sellToken} to ${buyToken}!`, "success");
+      setIsTransferring(false);
+      showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${buyToken}!`, "success");
       setSellAmount("");
     }, 2000);
   };
@@ -86,7 +184,7 @@ export function SwapWidget() {
     <div className="w-full bg-white border border-slate-200/80 rounded-3xl p-4 shadow-sm space-y-3 text-slate-900">
       <div className="relative flex flex-col gap-3">
         {/* Sell Container */}
-        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl pt-4 pb-5 px-4 flex flex-col h-fit">
+        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col h-fit relative">
           <div className="flex justify-between items-center w-full">
             <span className="text-xs font-bold text-slate-400 tracking-wider">Send</span>
 
@@ -119,6 +217,7 @@ export function SwapWidget() {
                           setBuyToken(sellToken);
                         }
                         setSellToken(token);
+                        setSellAmount(""); // Reset amount to prevent mismatch
                         setShowSellDropdown(false);
                       }}
                       className={`flex items-center gap-2.5 w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors ${sellToken === token ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
@@ -152,6 +251,20 @@ export function SwapWidget() {
               ${sellAmount ? parseFloat(sellAmount.replace(",", ".")) || 0 : 0}
             </span>
           </div>
+
+          {/* Max Button & Balance Absolute at Bottom Right */}
+          {isConnected && (
+            <div className="absolute bottom-3 right-4 flex items-center gap-2 text-[11px] text-slate-400 font-semibold">
+              <span>Balance: {formatAmount(tokenBalance)}</span>
+              <button
+                type="button"
+                onClick={() => setSellAmount(tokenBalance.toString())}
+                className="bg-[#D1FAE5] text-[#09955F] hover:bg-[#bbf7d0] active:scale-95 transition-all px-2 py-0.5 rounded-md font-bold text-[10px]"
+              >
+                Max
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Overlapping Swap Button */}
@@ -170,7 +283,7 @@ export function SwapWidget() {
         </div>
 
         {/* Buy Container */}
-        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl pt-4 pb-5 px-4 flex flex-col h-fit">
+        <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col h-fit">
           <div className="flex justify-between items-center w-full">
             <span className="text-xs font-bold text-slate-400 tracking-wider">Receive</span>
 
@@ -211,6 +324,7 @@ export function SwapWidget() {
                       onClick={() => {
                         if (token === sellToken) {
                           setSellToken(buyToken || "USDm");
+                          setSellAmount(""); // Reset amount because sell token changed
                         }
                         setBuyToken(token);
                         setShowBuyDropdown(false);
@@ -241,13 +355,13 @@ export function SwapWidget() {
       {/* Action Button */}
       <Button
         onClick={handleAction}
-        disabled={isSwapping}
+        disabled={isTransferring}
         className="w-full h-10 rounded-xl bg-[#09955F] hover:bg-[#077f50] text-white transition-all font-bold text-sm active:scale-[0.99] flex items-center justify-center gap-2 mt-1 shadow-sm"
       >
-        {isSwapping ? (
+        {isTransferring ? (
           <>
             <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-            Swapping...
+            Transferring...
           </>
         ) : (
           <>

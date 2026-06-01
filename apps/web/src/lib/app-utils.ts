@@ -14,21 +14,7 @@ export function formatAmount(amount: number | string, maxDecimals = 6): string {
   const num = typeof amount === "string" ? parseFloat(amount) : amount;
   if (isNaN(num) || num === 0) return "0";
 
-  const abs = Math.abs(num);
-  let decimals: number;
-
-  if (abs >= 1) {
-    decimals = Math.min(maxDecimals, 2);
-  } else if (abs >= 0.01) {
-    decimals = Math.min(maxDecimals, 4);
-  } else {
-    decimals = Math.min(
-      maxDecimals,
-      Math.max(2, Math.ceil(-Math.log10(abs)) + 1)
-    );
-  }
-
-  return trimTrailingZeros(num.toFixed(decimals));
+  return trimTrailingZeros(num.toFixed(maxDecimals));
 }
 
 export function truncateAddress(address: string, startLength = 6, endLength = 4): string {

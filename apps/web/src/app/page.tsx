@@ -120,7 +120,7 @@ export default function Home() {
                 month: "short",
                 day: "numeric",
               });
-            } catch {}
+            } catch { }
 
             parsedLogs.push({
               scheduleId: Number(args.scheduleId),
@@ -202,7 +202,7 @@ export default function Home() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-foreground">Schedule Remittance</h3>
-                <p className="text-xs text-muted-foreground">Setup new automated payment or write prompt</p>
+                <p className="text-xs text-muted-foreground">Setup new automated payment</p>
               </div>
               <ArrowRight className="h-5 w-5 text-muted-foreground" />
             </CardContent>
