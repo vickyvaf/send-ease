@@ -2,7 +2,7 @@
 
 import { ConnectButton } from "@/components/connect-button";
 import Link from "next/link";
-import { Send } from "lucide-react";
+import Image from "next/image";
 
 export function TopBar() {
   return (
@@ -10,9 +10,14 @@ export function TopBar() {
       <div className="w-full max-w-md border-b bg-background/80 backdrop-blur-xl pointer-events-auto">
         <div className="flex h-16 items-center justify-between px-4">
           <Link href="/" className="flex items-center gap-2 group transition-transform active:scale-95 shrink-0">
-            <div className="bg-primary p-1.5 rounded-md text-primary-foreground transition-transform">
-              <Send size={18} />
-            </div>
+            <Image
+              src="/logo.png"
+              alt="Sendease Logo"
+              width={32}
+              height={32}
+              priority
+              className="h-8 w-8 object-contain"
+            />
             <span className="font-bold text-base tracking-tight text-foreground whitespace-nowrap">Sendease</span>
           </Link>
           <div className="flex items-center gap-1.5 overflow-hidden">
