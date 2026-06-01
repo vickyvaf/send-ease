@@ -1,24 +1,27 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from 'react'
-import { ConnectButton } from '@rainbow-me/rainbowkit'
+import { ConnectButton as RainbowKitConnectButton } from "@rainbow-me/rainbowkit";
+import { useEffect, useState } from "react";
+import { useAccount } from "wagmi";
+import { ChevronDown } from "lucide-react";
 
-export function WalletConnectButton() {
-  const [mounted, setMounted] = useState(false)
+export function ConnectButton() {
+  const [isMinipay, setIsMinipay] = useState(false);
+  const { isConnected } = useAccount();
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    // @ts-ignore
+    if (window.ethereum?.isMiniPay) {
+      setIsMinipay(true);
+    }
+  }, []);
 
-  if (!mounted) {
-    return (
-      <button className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2">
-        Connect Wallet
-      </button>
-    )
+  if (isMinipay && isConnected) {
+    return null;
   }
+
   return (
-    <ConnectButton.Custom>
+    <RainbowKitConnectButton.Custom>
       {({
         account,
         chain,
@@ -28,38 +31,22 @@ export function WalletConnectButton() {
         authenticationStatus,
         mounted,
       }) => {
-        // Note: If your app doesn't use authentication, you
-        // can remove all 'authenticationStatus' checks
-        const ready = mounted && authenticationStatus !== 'loading'
+        const ready = mounted && authenticationStatus !== "loading";
         const connected =
           ready &&
           account &&
           chain &&
-          (!authenticationStatus ||
-            authenticationStatus === 'authenticated')
-
-        const hiddenStyle = {
-          opacity: 0,
-          pointerEvents: 'none' as const,
-          userSelect: 'none' as const,
-        }
-
-        const iconStyle = {
-          background: chain?.iconBackground,
-          width: 12,
-          height: 12,
-          borderRadius: 999,
-          overflow: 'hidden' as const,
-          marginRight: 4,
-        }
-
-        const imgStyle = { width: 12, height: 12 }
+          (!authenticationStatus || authenticationStatus === "authenticated");
 
         return (
           <div
             {...(!ready && {
-              'aria-hidden': true,
-              style: hiddenStyle,
+              "aria-hidden": true,
+              style: {
+                opacity: 0,
+                pointerEvents: "none",
+                userSelect: "none",
+              },
             })}
           >
             {(() => {
@@ -68,11 +55,11 @@ export function WalletConnectButton() {
                   <button
                     onClick={openConnectModal}
                     type="button"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                    className="bg-primary text-primary-foreground px-4 py-2 rounded-xl font-bold active:scale-95 transition-transform text-sm"
                   >
-                    Connect Wallet
+                    Connect
                   </button>
-                )
+                );
               }
 
               if (chain.unsupported) {
@@ -80,50 +67,60 @@ export function WalletConnectButton() {
                   <button
                     onClick={openChainModal}
                     type="button"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                    className="bg-destructive text-destructive-foreground px-4 py-2 rounded-xl font-bold active:scale-95 transition-transform text-sm"
                   >
                     Wrong network
                   </button>
-                )
+                );
               }
 
               return (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button
                     onClick={openChainModal}
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-3 py-2"
                     type="button"
+                    className="flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 text-foreground px-2 py-1.5 rounded-lg transition-colors text-xs font-semibold border border-border"
                   >
                     {chain.hasIcon && (
-                      <div style={iconStyle}>
+                      <div
+                        style={{
+                          background: chain.iconBackground,
+                          width: 16,
+                          height: 16,
+                          borderRadius: 999,
+                          overflow: "hidden",
+                        }}
+                      >
                         {chain.iconUrl && (
                           <img
-                            alt={chain.name ?? 'Chain icon'}
+                            alt={chain.name ?? "Chain icon"}
                             src={chain.iconUrl}
-                            style={imgStyle}
+                            style={{ width: 16, height: 16 }}
                           />
                         )}
                       </div>
                     )}
-                    {chain.name}
+                    <span className="sr-only sm:not-sr-only sm:inline">{chain.name}</span>
+                    <ChevronDown size={12} className="opacity-50" />
                   </button>
 
                   <button
                     onClick={openAccountModal}
                     type="button"
-                    className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+                    className="flex items-center gap-1.5 bg-secondary hover:bg-secondary/80 text-foreground px-2 py-1.5 rounded-lg transition-colors text-xs font-semibold border border-border"
                   >
+                    <div className="w-4 h-4 rounded-full bg-primary/10 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    </div>
                     {account.displayName}
-                    {account.displayBalance
-                      ? ` (${account.displayBalance})`
-                      : ''}
+                    <ChevronDown size={12} className="opacity-50" />
                   </button>
                 </div>
-              )
+              );
             })()}
           </div>
-        )
+        );
       }}
-    </ConnectButton.Custom>
-  )
+    </RainbowKitConnectButton.Custom>
+  );
 }
