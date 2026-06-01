@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { ArrowUpDown, ChevronDown, Send, Search, ScanSearch, Copy, Check } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Send, Search, ScanLine, Copy, Check, X } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { formatUnits } from "viem";
+import { formatUnits, isAddress } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 
 import usdcIcon from "@/assets/usdc.png";
@@ -23,6 +23,95 @@ const tokenIcons = {
   USDC: usdcIcon,
   USDT: usdtIcon,
 };
+
+function QRScanner({ onScan, onClose }: { onScan: (url: string) => void; onClose: () => void }) {
+  const scannerRef = useRef<any>(null);
+  const [isStopping, setIsStopping] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    let html5QrCode: any = null;
+
+    import("html5-qrcode").then(({ Html5Qrcode }) => {
+      if (!isMounted) return;
+
+      html5QrCode = new Html5Qrcode("reader-widget");
+      scannerRef.current = html5QrCode;
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250,
+          aspectRatio: 1.0,
+        },
+        (decodedText: string) => {
+          if (!isStopping) {
+            handleStop().then(() => onScan(decodedText));
+          }
+        },
+        () => { } // Ignore scan errors
+      ).then(() => {
+        if (!isMounted && html5QrCode) {
+          if (html5QrCode.isScanning) {
+            html5QrCode.stop()
+              .then(() => html5QrCode.clear())
+              .catch(() => { });
+          }
+        }
+      }).catch((err: any) => {
+        console.error("Camera access error:", err);
+      });
+    });
+
+    return () => {
+      isMounted = false;
+      if (html5QrCode) {
+        if (html5QrCode.isScanning) {
+          html5QrCode.stop()
+            .then(() => html5QrCode.clear())
+            .catch(() => { });
+        }
+      }
+    };
+  }, []);
+
+  const handleStop = async () => {
+    setIsStopping(true);
+    if (scannerRef.current) {
+      try {
+        if (scannerRef.current.isScanning || scannerRef.current.getState() === 2 /* SCANNING */) {
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+      } catch (e) {
+        console.error("Failed to stop scanner", e);
+      }
+    }
+  };
+
+  const handleCancel = async () => {
+    await handleStop();
+    onClose();
+  };
+
+  return (
+    <div className="flex flex-col items-center w-full">
+      <div id="reader-widget" className="w-full max-w-full rounded-3xl border border-slate-200/80 bg-black aspect-square relative flex items-center justify-center overflow-hidden [&_video]:!object-cover [&_video]:!w-full [&_video]:!h-full [&_video]:!rounded-3xl [&_video]:!m-0 [&_canvas]:!w-full [&_canvas]:!h-full [&_canvas]:!absolute [&_canvas]:!top-0 [&_canvas]:!left-0 [&_canvas]:!rounded-3xl shadow-inner">
+        <span className="text-white/50 text-xs absolute z-0">
+          {isStopping ? "Stopping camera..." : "Requesting camera..."}
+        </span>
+      </div>
+      <button
+        onClick={handleCancel}
+        disabled={isStopping}
+        className="mt-6 font-bold text-slate-500 hover:text-slate-800 p-2 disabled:opacity-50 text-sm active:scale-95 transition-all"
+      >
+        {isStopping ? "Closing..." : "Cancel scan"}
+      </button>
+    </div>
+  );
+}
 
 export function SwapWidget() {
   const { showToast } = useToast();
@@ -51,6 +140,56 @@ export function SwapWidget() {
   const [isTransferring, setIsTransferring] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+
+  const handleScanResult = (decodedText: string) => {
+    const text = decodedText.trim();
+    if (isAddress(text)) {
+      setResolvedAddress(text);
+      setPhoneResolutionStatus({
+        type: "success",
+        message: `Wallet found: ${text.slice(0, 6)}...${text.slice(-4)}`,
+      });
+      showToast("Scanned wallet address successfully!", "success");
+      return;
+    }
+
+    try {
+      const url = new URL(text);
+      const to = url.searchParams.get("to");
+      if (to && isAddress(to)) {
+        setResolvedAddress(to);
+        setPhoneResolutionStatus({
+          type: "success",
+          message: `Wallet found: ${to.slice(0, 6)}...${to.slice(-4)}`,
+        });
+        showToast("Scanned wallet address successfully!", "success");
+        return;
+      }
+    } catch (e) {
+      // not a url
+    }
+
+    let cleaned = text.replace(/[^\d+]/g, "");
+    if (cleaned.startsWith("+")) {
+      const matchedCountry = countries.find(c => cleaned.startsWith(c.code));
+      if (matchedCountry) {
+        setSelectedPrefix(matchedCountry.code);
+        setPhoneNumber(cleaned.slice(matchedCountry.code.length));
+        showToast(`Scanned phone number: ${cleaned}`, "success");
+        return;
+      }
+    }
+
+    const digitsOnly = text.replace(/[^\d]/g, "");
+    if (digitsOnly.length >= 5) {
+      setPhoneNumber(digitsOnly);
+      showToast(`Scanned phone number: ${digitsOnly}`, "success");
+      return;
+    }
+
+    showToast("QR code format unrecognized.", "error");
+  };
 
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
@@ -263,12 +402,12 @@ export function SwapWidget() {
 
   const handlePhoneLookup = async () => {
     // If running in MiniPay, use the native contact picker
-    if (typeof window !== "undefined" && window.ethereum?.isMiniPay) {
+    if (typeof window !== "undefined" && (window as any).ethereum?.isMiniPay) {
       setIsResolvingPhone(true);
       setResolvedAddress("");
       setPhoneResolutionStatus(null);
       try {
-        const contact = await (window.ethereum as any).request({
+        const contact = await (window as any).ethereum.request({
           method: "minipay_requestContact",
         });
         if (contact && contact.address) {
@@ -542,8 +681,8 @@ export function SwapWidget() {
 
             {showPhoneDropdown && (
               <div className={`absolute left-0 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-30 animate-in fade-in duration-150 flex flex-col max-h-60 ${dropdownPosition === "top"
-                  ? "bottom-full mb-2 origin-bottom slide-in-from-bottom-2"
-                  : "mt-3 origin-top slide-in-from-top-2"
+                ? "bottom-full mb-2 origin-bottom slide-in-from-bottom-2"
+                : "mt-3 origin-top slide-in-from-top-2"
                 }`}>
                 {/* Search country */}
                 <div className="px-2 pb-1.5 border-b border-slate-100 flex items-center gap-1">
@@ -602,19 +741,14 @@ export function SwapWidget() {
             className="bg-transparent border-none outline-none text-sm font-semibold p-0 text-slate-900 placeholder-slate-300 w-full focus:ring-0"
           />
 
-          {/* Search/Lookup Button */}
+          {/* QR Scanner Button */}
           <button
             type="button"
-            onClick={handlePhoneLookup}
-            disabled={isResolvingPhone || (!(typeof window !== "undefined" && window.ethereum?.isMiniPay) && !phoneNumber.trim())}
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#09955F] transition-all disabled:opacity-40 disabled:pointer-events-none shrink-0"
-            title={typeof window !== "undefined" && window.ethereum?.isMiniPay ? "Choose from contacts" : "Lookup wallet address"}
+            onClick={() => setShowScanner(true)}
+            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#09955F] transition-all shrink-0"
+            title="Scan QR code"
           >
-            {isResolvingPhone ? (
-              <span className="w-4 h-4 border-2 border-[#09955F] border-t-transparent rounded-full animate-spin block"></span>
-            ) : (
-              <ScanSearch className="w-4 h-4" />
-            )}
+            <ScanLine className="w-4.5 h-4.5" />
           </button>
         </div>
 
@@ -661,6 +795,30 @@ export function SwapWidget() {
           </>
         )}
       </Button>
+
+      {showScanner && (
+        <div className="fixed inset-0 z-[110] flex flex-col justify-end items-center animate-in fade-in duration-250">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowScanner(false)}></div>
+          <div className="relative bg-white text-slate-900 w-full max-w-md rounded-t-3xl p-6 pb-10 border-t border-slate-200 animate-in slide-in-from-bottom-full duration-300 flex flex-col items-center">
+            <div className="flex justify-between items-center w-full mb-6">
+              <h2 className="text-lg font-bold text-slate-800">Scan QR Code</h2>
+              <button
+                onClick={() => setShowScanner(false)}
+                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 active:scale-95 transition-all"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <QRScanner
+              onScan={(decodedText) => {
+                setShowScanner(false);
+                handleScanResult(decodedText);
+              }}
+              onClose={() => setShowScanner(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
