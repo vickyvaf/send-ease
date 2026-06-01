@@ -76,8 +76,18 @@ export default function AIAgent() {
         } catch (err) {}
       }
       setUserSchedules(list);
-    } catch (e) {
-      console.error("Failed to load schedules context", e);
+    } catch (e: any) {
+      const isContractNotDeployed = e instanceof Error && (
+        e.message.includes("returned no data") ||
+        e.message.includes("0x") ||
+        e.message.includes("not a contract")
+      );
+      if (isContractNotDeployed) {
+        console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
+        setUserSchedules([]);
+      } else {
+        console.error("Failed to load schedules context", e);
+      }
     }
   }, [isConnected, address, publicClient, contractAddress]);
 

@@ -138,9 +138,19 @@ export default function Home() {
         console.error("Failed to query event logs", errEvent);
       }
 
-    } catch (e) {
-      console.error("Failed to load dashboard data", e);
-      showToast("Failed to load on-chain remittance data", "error");
+    } catch (e: any) {
+      const isContractNotDeployed = e instanceof Error && (
+        e.message.includes("returned no data") ||
+        e.message.includes("0x") ||
+        e.message.includes("not a contract")
+      );
+      if (isContractNotDeployed) {
+        console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
+        setSchedules([]);
+      } else {
+        console.error("Failed to load dashboard data", e);
+        showToast("Failed to load on-chain remittance data", "error");
+      }
     } finally {
       setLoading(false);
     }

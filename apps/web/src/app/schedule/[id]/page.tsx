@@ -117,9 +117,19 @@ export default function ScheduleDetail({ params }: PageProps) {
         }
       }
       setHistoryLogs(parsedLogs.reverse());
-    } catch (e) {
-      console.error(e);
-      showToast("Failed to load schedule details", "error");
+    } catch (e: any) {
+      const isContractNotDeployed = e instanceof Error && (
+        e.message.includes("returned no data") ||
+        e.message.includes("0x") ||
+        e.message.includes("not a contract")
+      );
+      if (isContractNotDeployed) {
+        console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
+        setSchedule(null);
+      } else {
+        console.error(e);
+        showToast("Failed to load schedule details", "error");
+      }
     } finally {
       setLoading(false);
     }
