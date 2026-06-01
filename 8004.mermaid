@@ -1,0 +1,80 @@
+flowchart TD
+    %% ====== LEGEND ======
+    subgraph LEGEND[Legend]
+      direction LR
+      U[User] --- A[AI Agent / Backend] --- C[(Remittance Contract)]
+      M[MiniPay Wallet]
+    end
+
+    %% ====== START ======
+    START([Buka MiniApp di MiniPay])
+
+    %% ====== HOME / DASHBOARD ======
+    START --> H1[Home / Dashboard\nTampilkan daftar schedule dan activity]
+    H1 --> H1_CREATE[User tap tombol Create Remittance]
+    H1_CREATE --> CR1[Screen: New Remittance]
+
+    %% ====== CREATE / EDIT REMITTANCE ======
+    subgraph CREATE[Create / Edit Remittance Flow]
+      direction TB
+
+      CR1 --> IN1[User isi Natural Language Prompt\ncth: Kirim 100 USDm ke Ana tiap tanggal 1]
+      CR1 --> IN2[Atau isi Form terstruktur\nRecipient, Amount, Frequency, Start date, Limit]
+
+      IN1 --> AG1[AI Agent parse intent\nmenjadi amount, currency, recipient, frequency, start date]
+      AG1 --> F1[Form terisi otomatis dari hasil parsing]
+      IN2 --> F1
+
+      F1 --> R1[User review konfigurasi remittance\nperiksa recipient, amount, jadwal, limit]
+
+      R1 --> CONFIRM[Screen: Review dan Approve]
+      CONFIRM --> M1[MiniPay Wallet prompt\napprove kontrak atau transfer dana awal]
+      M1 --> C1[(Remittance Contract\nmenyimpan config dan dana)]
+
+      C1 --> D1[Kembali ke Dashboard\ntampilkan schedule baru di Active Schedules]
+    end
+
+    %% ====== PERIODIC EXECUTION (AGENT) ======
+    subgraph EXEC[Periodic Execution oleh Agent]
+      direction TB
+
+      T0[Waktu berjalan\ncron atau scheduler backend] --> CK1[Agent cek semua schedule aktif]
+      CK1 --> CK2[Untuk tiap schedule:\ncek tanggal, status, saldo, dan limit]
+
+      CK2 --> WAIT[Jika belum saatnya atau status nonaktif\nskip dan tunggu tick berikutnya]
+      CK2 --> AGTX["Jika saatnya kirim dan masih dalam limit\nagent panggil kontrak executeScheduledPayment(id)"]
+
+      AGTX --> C2[(Remittance Contract\nkirim stablecoin ke penerima)]
+      C2 --> TXOK[Transaksi sukses\nsimpan log dan event]
+      C2 --> TXFAIL[Transaksi gagal\nmisalnya saldo kurang atau error lain]
+    end
+
+    %% ====== USER VIEW HISTORY / DETAIL ======
+    subgraph DETAIL[Schedule Detail dan History]
+      direction TB
+
+      H1 --> SD1[User pilih salah satu schedule\nbuka Remittance Detail]
+      SD1 --> SD2[Tampilkan header\nrecipient, amount, frequency, status]
+      SD2 --> SD3[Bagian Next payment\nnext date dan estimasi nilai lokal]
+      SD3 --> SD4[Bagian History\nriwayat transaksi: tanggal, status, link explorer]
+
+      SD4 --> SD_PAUSE[User toggle Pause atau Resume]
+      SD4 --> SD_EDIT[User pilih Edit schedule]
+      SD4 --> SD_CANCEL[User pilih Cancel schedule]
+
+      SD_PAUSE --> A_PAUSE[Agent update status schedule di contract]
+      SD_EDIT --> A_EDIT[Agent jalankan flow edit\nupdate config di contract]
+      SD_CANCEL --> A_CANCEL[Agent set schedule nonaktif\ndan opsional tarik sisa dana ke user]
+
+      A_PAUSE --> SD1
+      A_EDIT --> SD1
+      A_CANCEL --> SD1
+    end
+
+    %% ====== NOTIFICATIONS ======
+    subgraph NOTIF[Notifications dan Safety]
+      direction TB
+
+      TXFAIL --> N1[Agent kirim notifikasi ke user\npembayaran gagal: saldo kurang atau error]
+      CK2 --> N2[Jika limit bulanan tercapai\nagent kirim notifikasi dan mem-pause schedule]
+    end
