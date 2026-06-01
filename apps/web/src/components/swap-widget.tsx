@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { ArrowDown, ArrowUp, ChevronDown } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 
@@ -231,8 +231,8 @@ export function SwapWidget() {
             <span className="text-4xl font-bold text-slate-900 leading-tight">
               {sellAmount ? sellAmount : "0"}
             </span>
-            <span className="text-xs text-slate-400 mt-0.5 font-semibold opacity-0 select-none">
-              placeholder
+            <span className="text-xs text-slate-400 mt-0.5 font-semibold">
+              ${sellAmount ? parseFloat(sellAmount.replace(",", ".")) || 0 : 0}
             </span>
           </div>
         </div>
@@ -250,7 +250,10 @@ export function SwapWidget() {
             Swapping...
           </>
         ) : (
-          "Get started"
+          <>
+            <Send className="w-4 h-4" />
+            Transfer
+          </>
         )}
       </Button>
     </div>

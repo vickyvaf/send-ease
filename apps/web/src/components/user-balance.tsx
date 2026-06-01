@@ -136,9 +136,6 @@ export function UserBalance() {
       <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between h-[100px]">
         <div className="flex justify-between items-center w-full">
           <span className="text-xs font-bold text-slate-400 tracking-wider">Total Balance</span>
-          <div className="p-1.5 rounded-full bg-white border border-slate-200/60 shadow-xs text-slate-400">
-            <Wallet className="w-4 h-4" />
-          </div>
         </div>
         <div className="flex flex-col mt-0.5">
           <div className="flex items-baseline gap-1.5">
@@ -152,9 +149,8 @@ export function UserBalance() {
 
       {/* Token Cards Grid with expand/collapse */}
       <div
-        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
-          assetsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
-        }`}
+        className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${assetsExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+          }`}
       >
         <div className="overflow-hidden">
           <div className="grid grid-cols-2 gap-3 pt-4 pb-1">
@@ -184,9 +180,8 @@ export function UserBalance() {
           aria-label={assetsExpanded ? "Collapse assets" : "Expand assets"}
         >
           <ChevronUp
-            className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-300 ${
-              assetsExpanded ? "" : "rotate-180"
-            }`}
+            className={`h-3.5 w-3.5 text-slate-500 transition-transform duration-300 ${assetsExpanded ? "" : "rotate-180"
+              }`}
           />
         </button>
       </div>
