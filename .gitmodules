@@ -1,0 +1,3 @@
+[submodule "split-pay"]
+	path = split-pay
+	url = https://github.com/vickyvaf/split-pay
