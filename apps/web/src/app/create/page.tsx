@@ -33,11 +33,11 @@ export default function CreateRemittance() {
 
   const handlePhoneLookup = async (phone: string) => {
     // If running in MiniPay, use the native contact picker
-    if (typeof window !== "undefined" && window.ethereum?.isMiniPay) {
+    if (typeof window !== "undefined" && (window as any).ethereum?.isMiniPay) {
       setIsResolvingPhone(true);
       setPhoneResolutionStatus({ type: "idle", message: "" });
       try {
-        const contact = await (window.ethereum as any).request({
+        const contact = await (window as any).ethereum.request({
           method: "minipay_requestContact",
         });
         if (contact && contact.address) {
@@ -363,7 +363,7 @@ export default function CreateRemittance() {
                 }}
                 className="rounded-xl border-border focus-visible:ring-[#09955F] flex-1"
               />
-              {((typeof window !== "undefined" && window.ethereum?.isMiniPay) || (recipientPhone.startsWith("+") && recipientPhone.length >= 8)) && (
+              {((typeof window !== "undefined" && (window as any).ethereum?.isMiniPay) || (recipientPhone.startsWith("+") && recipientPhone.length >= 8)) && (
                 <button
                   type="button"
                   onClick={() => handlePhoneLookup(recipientPhone)}
@@ -375,7 +375,7 @@ export default function CreateRemittance() {
                   ) : (
                     <Search size={13} />
                   )}
-                  {typeof window !== "undefined" && window.ethereum?.isMiniPay ? "Contacts" : "Lookup"}
+                  {typeof window !== "undefined" && (window as any).ethereum?.isMiniPay ? "Contacts" : "Lookup"}
                 </button>
               )}
             </div>
