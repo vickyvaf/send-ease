@@ -296,7 +296,7 @@ export default function ScheduleDetail({ params }: PageProps) {
             <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider ${getStatusBadgeClass(schedule.status)}`}>
               {getStatusLabel(schedule.status)}
             </span>
-            <span className="text-xs text-muted-foreground font-semibold bg-slate-100 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-primary font-semibold bg-primary/10 px-2 py-0.5 rounded-full">
               {getFrequencyLabel(schedule.frequency)}
             </span>
           </div>
@@ -342,7 +342,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-slate-50/50">
+              <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-primary/[0.02]">
                 <div>
                   <p className="text-xs font-bold text-foreground">Enable Monthly Limit</p>
                   <p className="text-xs text-muted-foreground">Automatically pause if total monthly transfers exceed this value</p>
@@ -381,7 +381,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                 <button
                   onClick={() => setIsEditing(false)}
                   disabled={signingAction}
-                  className="flex-1 bg-white border border-border text-foreground hover:bg-slate-50 font-bold py-2 rounded-xl text-xs active:scale-[0.98] transition-transform"
+                  className="flex-1 bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-2 rounded-xl text-xs active:scale-[0.98] transition-transform"
                 >
                   Cancel
                 </button>
@@ -411,7 +411,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                     </span>
                   </div>
                   {/* Flat progress bar */}
-                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-primary/10 h-2 rounded-full overflow-hidden">
                     <div
                       className="bg-[#09955F] h-full transition-all"
                       style={{ width: `${Math.min(100, (schedule.currentMonthPaid / schedule.maxMonthlyAmount) * 100)}%` }}
@@ -461,7 +461,7 @@ export default function ScheduleDetail({ params }: PageProps) {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-2xl border border-dashed border-border/60">
+          <div className="flex flex-col items-center justify-center py-8 text-center bg-primary/[0.02] rounded-2xl border border-dashed border-primary/20">
             <p className="text-xs text-muted-foreground">No transaction logs available for this schedule</p>
           </div>
         )}
@@ -473,7 +473,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           <button
             onClick={handleTogglePause}
             disabled={signingAction}
-            className="flex-1 bg-white border border-border text-foreground hover:bg-slate-50 font-bold py-3.5 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-3.5 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
           >
             {schedule.status === 1 ? (
               <>

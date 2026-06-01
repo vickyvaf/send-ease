@@ -73,7 +73,7 @@ export default function RootLayout({
             <ToastProvider>
               <ChatProvider>
                 <div className="min-h-screen flex flex-col items-center">
-                  <div className="w-full max-w-md min-h-screen flex flex-col bg-white border-x border-slate-100 relative">
+                  <div className="w-full max-w-md min-h-screen flex flex-col bg-white border-x border-slate-200 relative">
                     <TopBar />
                     <main className="flex-1 pt-20 pb-24 px-4 overflow-y-auto">
                       {children}

@@ -167,7 +167,7 @@ export default function ReviewApprove() {
         <CardContent className="p-5 space-y-4">
           {/* Recipient */}
           <div className="flex gap-3">
-            <div className="h-9 w-9 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center shrink-0 border border-border">
+            <div className="h-9 w-9 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
               <User size={16} />
             </div>
             <div>
@@ -180,7 +180,7 @@ export default function ReviewApprove() {
 
           {/* Amount */}
           <div className="flex gap-3">
-            <div className="h-9 w-9 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center shrink-0 border border-border">
+            <div className="h-9 w-9 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
               <DollarSign size={16} />
             </div>
             <div>
@@ -195,7 +195,7 @@ export default function ReviewApprove() {
 
           {/* Schedule */}
           <div className="flex gap-3">
-            <div className="h-9 w-9 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center shrink-0 border border-border">
+            <div className="h-9 w-9 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
               <Calendar size={16} />
             </div>
             <div>
@@ -208,7 +208,7 @@ export default function ReviewApprove() {
           {/* Limits */}
           {pending.hasMonthlyLimit && (
             <div className="flex gap-3">
-              <div className="h-9 w-9 rounded-xl bg-slate-50 text-slate-500 flex items-center justify-center shrink-0 border border-border">
+              <div className="h-9 w-9 rounded-xl bg-primary/5 text-primary flex items-center justify-center shrink-0 border border-primary/10">
                 <Settings size={16} />
               </div>
               <div>
@@ -248,7 +248,7 @@ export default function ReviewApprove() {
         <button
           onClick={() => router.back()}
           disabled={loading}
-          className="w-full bg-white border border-border text-foreground hover:bg-slate-50 font-bold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           Modify Details
         </button>

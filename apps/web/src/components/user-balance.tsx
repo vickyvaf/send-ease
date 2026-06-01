@@ -114,7 +114,7 @@ export function UserBalance() {
 
   if (!isConnected) {
     return (
-      <Card className="border border-border bg-slate-50 shadow-none">
+      <Card className="border border-border bg-white shadow-none">
         <CardContent className="p-6 text-center space-y-2">
           <Coins className="h-10 w-10 text-slate-400 mx-auto" />
           <h3 className="font-bold text-foreground">Wallet Disconnected</h3>

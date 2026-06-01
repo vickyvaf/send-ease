@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2 } from "lucide-react";
+import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,19 +53,18 @@ export default function CreateRemittance() {
       const data = await res.json();
       if (res.ok && data.success && data.walletAddress) {
         setRecipientAddress(data.walletAddress);
+        const shortAddr = `${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`;
         setPhoneResolutionStatus({
           type: "success",
-          message: data.warning 
-            ? `${data.warning} Address: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}` 
-            : `Linked wallet found: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`
+          message: `Address found: ${shortAddr}`
         });
-        showToast(data.warning || "Recipient wallet address found!", "success");
+        showToast("Address found successfully!", "success");
       } else if (res.ok && data.success && !data.walletAddress) {
         setPhoneResolutionStatus({
           type: "error",
-          message: "No MiniPay wallet is linked to this phone number yet."
+          message: "Failed to find any registered wallet for this phone number."
         });
-        showToast("Phone number not registered on MiniPay", "error");
+        showToast("Failed to find wallet address", "error");
       } else {
         throw new Error(data.error || "Lookup failed");
       }
@@ -73,7 +72,7 @@ export default function CreateRemittance() {
       console.error("Lookup error:", err);
       setPhoneResolutionStatus({
         type: "error",
-        message: err.message || "Failed to lookup phone number."
+        message: "Failed to find wallet address. ODIS lookup error."
       });
     } finally {
       setIsResolvingPhone(false);
@@ -119,12 +118,12 @@ export default function CreateRemittance() {
             setRecipientAddress(params.recipientAddress);
           }
           setRecipientPhone(params.recipientPhone || "");
-          
+
           // Set inputs. Amount is converted from USD to display currency
           const amountUsd = params.amount;
           const displayAmount = convertStableUsdToDisplay(amountUsd, "USDm");
           setAmountInput(displayAmount.toFixed(2));
-          
+
           setFrequency(params.frequency);
           if (params.startDate) {
             setStartDate(params.startDate);
@@ -209,19 +208,22 @@ export default function CreateRemittance() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 mb-2">
-        <Link href="/" className="text-muted-foreground hover:text-foreground text-sm shrink-0 flex items-center gap-1 font-bold">
-          ← Back
-        </Link>
-      </div>
-
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground">New Remittance</h1>
-        <p className="text-xs text-muted-foreground">Describe in text or fill out the schedule manually.</p>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="h-9 w-9 border border-border bg-white text-muted-foreground hover:text-primary hover:bg-primary/5 hover:border-primary/30 rounded-full transition-all shrink-0 flex items-center justify-center shadow-sm hover:scale-105 active:scale-95"
+            aria-label="Back"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="text-2xl font-bold text-foreground leading-none">New Remittance</h1>
+        </div>
+        <p className="text-xs text-muted-foreground pl-12">Describe in text or fill out the schedule manually.</p>
       </div>
 
       {/* AI Parsing Block */}
-      <Card className="border border-primary/20 bg-slate-50/50 rounded-2xl shadow-none">
+      <Card className="border border-primary/20 bg-primary/[0.02] rounded-2xl shadow-none">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-1.5 text-primary text-xs font-bold uppercase tracking-wider">
             <Sparkles size={14} />
@@ -237,7 +239,7 @@ export default function CreateRemittance() {
             <button
               onClick={handlePromptSubmit}
               disabled={aiLoading}
-              className="w-full bg-white border border-[#E4E4E7] text-[#09955F] hover:bg-slate-50 font-bold py-2 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
+              className="w-full bg-white border border-border text-[#09955F] hover:bg-primary/5 hover:border-primary/30 font-bold py-2 rounded-xl text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
             >
               {aiLoading ? "Analyzing..." : "Generate from prompt"}
             </button>
@@ -286,6 +288,7 @@ export default function CreateRemittance() {
                   setRecipientPhone(e.target.value);
                   if (phoneResolutionStatus.type !== "idle") {
                     setPhoneResolutionStatus({ type: "idle", message: "" });
+                    setRecipientAddress("");
                   }
                 }}
                 onBlur={() => {
@@ -300,7 +303,7 @@ export default function CreateRemittance() {
                   type="button"
                   onClick={() => handlePhoneLookup(recipientPhone)}
                   disabled={isResolvingPhone}
-                  className="px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 disabled:opacity-50 text-xs font-bold rounded-xl border border-slate-200 transition-colors flex items-center gap-1 active:scale-[0.98]"
+                  className="px-3 bg-white hover:bg-primary/5 text-primary disabled:opacity-50 text-xs font-bold rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-1 active:scale-[0.98]"
                 >
                   {isResolvingPhone ? (
                     <Loader2 size={13} className="animate-spin text-primary" />
@@ -336,7 +339,8 @@ export default function CreateRemittance() {
               placeholder="0x..."
               value={recipientAddress}
               onChange={(e) => setRecipientAddress(e.target.value)}
-              className="rounded-xl border-border font-mono text-xs focus-visible:ring-[#09955F]"
+              disabled={phoneResolutionStatus.type === "success"}
+              className="rounded-xl border-border font-mono text-xs focus-visible:ring-[#09955F] disabled:opacity-75 disabled:bg-primary/[0.02] disabled:cursor-not-allowed"
             />
           </div>
 
@@ -388,7 +392,7 @@ export default function CreateRemittance() {
           </div>
 
           {/* Safety Limit Toggle */}
-          <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-slate-50/30">
+          <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-primary/[0.02]">
             <div>
               <p className="text-xs font-bold text-foreground">Enable Monthly Limit</p>
               <p className="text-xs text-muted-foreground">Pause automatically if spending exceeds this limit</p>

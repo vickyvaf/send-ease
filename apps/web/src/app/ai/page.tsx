@@ -269,7 +269,7 @@ export default function AIAgent() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-              <div className={`h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center border border-border ${msg.role === "user" ? "bg-primary text-white" : "bg-slate-50 text-[#09955F]"}`}>
+              <div className={`h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center border border-border ${msg.role === "user" ? "bg-primary text-white" : "bg-primary/5 text-[#09955F]"}`}>
                 {msg.role === "user" ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
               </div>
               <div className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"} gap-2`}>
@@ -281,7 +281,7 @@ export default function AIAgent() {
                     <div className="space-y-3">
                       <div>{stripMarkdown(msg.content)}</div>
                       {msg.actionData && msg.actionData.type === "create_schedule" && (
-                        <div className="mt-2 p-4 bg-slate-50 border border-border rounded-xl space-y-3 text-xs">
+                        <div className="mt-2 p-4 bg-primary/[0.02] border border-primary/10 rounded-xl space-y-3 text-xs">
                           <p className="font-bold text-slate-800 flex items-center gap-1">📋 Planned Schedule Remittance</p>
                           <div className="grid grid-cols-2 gap-1.5 text-xs text-slate-700">
                             <span className="text-slate-500">Recipient Name:</span>
@@ -329,14 +329,14 @@ export default function AIAgent() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => handleRetry(msg.content)}
-                      className="bg-white border border-[#E4E4E7] text-[#09955F] hover:bg-slate-50 font-bold px-2 py-1 rounded-lg text-xs active:scale-95 transition-transform flex items-center gap-1"
+                      className="bg-white border border-[#E4E4E7] text-[#09955F] hover:bg-primary/5 hover:border-primary/30 font-bold px-2 py-1 rounded-lg text-xs active:scale-95 transition-transform flex items-center gap-1"
                     >
                       <RefreshCw className="h-2.5 w-2.5" />
                       Retry
                     </button>
                     <button
                       onClick={() => handleEdit(msg.content)}
-                      className="bg-white border border-[#E4E4E7] text-slate-500 hover:bg-slate-50 font-bold px-2 py-1 rounded-lg text-xs active:scale-95 transition-transform flex items-center gap-1"
+                      className="bg-white border border-[#E4E4E7] text-slate-500 hover:bg-primary/5 hover:border-primary/30 font-bold px-2 py-1 rounded-lg text-xs active:scale-95 transition-transform flex items-center gap-1"
                     >
                       <Pencil className="h-2.5 w-2.5" />
                       Edit
@@ -350,7 +350,7 @@ export default function AIAgent() {
         {isLoading && (
           <div className="flex justify-start">
             <div className="max-w-[85%] flex gap-2">
-              <div className="h-8 w-8 rounded-full bg-slate-50 text-[#09955F] flex-shrink-0 flex items-center justify-center border border-border shadow-none">
+              <div className="h-8 w-8 rounded-full bg-primary/5 text-[#09955F] flex-shrink-0 flex items-center justify-center border border-border shadow-none">
                 <Bot className="h-4 w-4 animate-pulse" />
               </div>
               <div className="p-3 rounded-xl text-sm bg-white border border-border shadow-none rounded-tl-none text-foreground flex items-center gap-1 min-h-10">
@@ -370,7 +370,7 @@ export default function AIAgent() {
                 <button
                   key={i}
                   onClick={() => setInput(s)}
-                  className="w-fit text-xs bg-white border border-border px-4 py-3 rounded-xl hover:border-primary hover:text-[#09955F] transition-all text-left font-medium text-slate-700"
+                  className="w-fit text-xs bg-white border border-border px-4 py-3 rounded-xl hover:border-primary hover:bg-primary/5 hover:text-[#09955F] transition-all text-left font-medium text-slate-700"
                 >
                   {s}
                 </button>
@@ -382,90 +382,95 @@ export default function AIAgent() {
       </div>
 
       {/* Input Area - Fixed above BottomNav */}
-      <div className="fixed bottom-20 left-0 right-0 z-20 bg-background/95 backdrop-blur-md pt-3 pb-4 px-4 border-t border-border/50 max-w-md mx-auto">
-        {/* Chat History Badges */}
-        <div className="flex items-center gap-2 mb-3 py-1 overflow-x-auto no-scrollbar">
-          <div className="flex-shrink-0">
-            <button
-              onClick={startNewChat}
-              className={`h-8 px-3 text-xs font-bold tracking-wider rounded-lg border border-primary/20 text-primary bg-primary/5 flex items-center gap-1 active:scale-95 transition-transform ${!currentSessionId ? 'ring-1 ring-primary/30' : ''}`}
-            >
-              <Plus className="h-3 w-3" />
-              New
-            </button>
-          </div>
-
-          <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
-            {sessions.map((s) => (
-              <div
-                key={s.id}
-                className={`flex-shrink-0 flex items-center rounded-lg border transition-all overflow-hidden ${currentSessionId === s.id
-                  ? "bg-primary border-primary text-white"
-                  : "bg-white border-border text-muted-foreground hover:text-foreground"
-                  }`}
+      <div className="fixed bottom-20 left-0 right-0 z-20 bg-white/95 backdrop-blur-md pt-3 pb-4 px-4 border-t border-x border-slate-200 max-w-md mx-auto">
+        {/* Bordered container wrapping New + input */}
+        <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
+          {/* Chat History Badges row */}
+          <div className="flex items-center gap-2 px-3 pt-3 pb-2 overflow-x-auto no-scrollbar border-b border-slate-100">
+            <div className="flex-shrink-0">
+              <button
+                onClick={startNewChat}
+                className={`h-8 px-3 text-xs font-bold tracking-wider rounded-lg border border-primary/20 text-primary bg-primary/5 flex items-center gap-1 active:scale-95 transition-transform ${!currentSessionId ? 'ring-1 ring-primary/30' : ''}`}
               >
-                <button
-                  onClick={() => loadSession(s)}
-                  className="px-3 py-1.5 text-xs font-medium whitespace-nowrap flex items-center gap-1.5"
-                >
-                  <MessageSquare className="h-3 w-3" />
-                  {s.title}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteSession(s.id);
-                  }}
-                  className={`px-2 py-1.5 flex items-center justify-center border-l transition-all ${currentSessionId === s.id
-                    ? "text-white/70 border-white/20 hover:text-white hover:bg-red-700"
-                    : "text-muted-foreground border-border hover:text-red-600 hover:bg-red-50"
+                <Plus className="h-3 w-3" />
+                New
+              </button>
+            </div>
+
+            <div className="flex-1 flex items-center gap-2 overflow-x-auto no-scrollbar">
+              {sessions.map((s) => (
+                <div
+                  key={s.id}
+                  className={`flex-shrink-0 flex items-center rounded-lg border transition-all overflow-hidden ${currentSessionId === s.id
+                    ? "bg-primary border-primary text-white"
+                    : "bg-white border-border text-muted-foreground hover:text-foreground"
                     }`}
                 >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-            ))}
+                  <button
+                    onClick={() => loadSession(s)}
+                    className="px-3 py-1.5 text-xs font-medium whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <MessageSquare className="h-3 w-3" />
+                    {s.title}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSession(s.id);
+                    }}
+                    className={`px-2 py-1.5 flex items-center justify-center border-l transition-all ${currentSessionId === s.id
+                      ? "text-white/70 border-white/20 hover:text-white hover:bg-red-700"
+                      : "text-muted-foreground border-border hover:text-red-600 hover:bg-red-50"
+                      }`}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
 
-            {sessions.length === 0 && (
-              <div className="text-xs text-muted-foreground italic px-2 flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
-                No previous chats
-              </div>
-            )}
+              {sessions.length === 0 && (
+                <div className="text-xs text-muted-foreground italic px-2 flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  No previous chats
+                </div>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div className="relative">
-          <Input
-            placeholder="Type your prompt..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-            className="pr-24 h-12 rounded-xl bg-white shadow-none text-sm border-border focus-visible:ring-primary"
-          />
-          <div className="absolute right-1 top-1 flex gap-1">
-            <Button
-              size="icon"
-              variant={isListening ? "destructive" : "ghost"}
-              className={`h-10 w-10 rounded-lg transition-all ${isListening
-                ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200 border border-red-200 shadow-none'
-                : 'text-muted-foreground hover:bg-secondary hover:text-primary shadow-none'
-                }`}
-              onClick={startListening}
-            >
-              {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
-            <Button
-              size="icon"
-              className="h-10 w-10 rounded-lg shadow-none bg-primary text-primary-foreground hover:bg-primary/95"
-              onClick={() => sendMessage()}
-              disabled={!input.trim() || isLoading}
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+          {/* Input field row */}
+          <div className="relative px-2 py-2">
+            <Input
+              placeholder="Type your prompt..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              className="pr-24 h-12 rounded-xl bg-white shadow-none text-sm border-transparent focus-visible:ring-0 focus-visible:border-transparent"
+            />
+            <div className="absolute right-3 top-3 flex gap-1">
+              <Button
+                size="icon"
+                variant={isListening ? "destructive" : "ghost"}
+                className={`h-10 w-10 rounded-lg transition-all ${isListening
+                  ? 'animate-pulse bg-red-100 text-red-600 hover:bg-red-200 border border-red-200 shadow-none'
+                  : 'text-muted-foreground hover:bg-primary/5 hover:text-primary shadow-none'
+                  }`}
+                onClick={startListening}
+              >
+                {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              <Button
+                size="icon"
+                className="h-10 w-10 rounded-lg shadow-none bg-primary text-primary-foreground hover:bg-primary/95"
+                onClick={() => sendMessage()}
+                disabled={!input.trim() || isLoading}
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
+
     </div>
   );
 }

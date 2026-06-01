@@ -217,7 +217,7 @@ export default function Home() {
           <div className="space-y-3">
             {schedules.map((item) => (
               <Link href={`/schedule/${item.id}`} key={item.id} className="block">
-                <Card className="border border-border rounded-xl hover:bg-slate-50 transition-colors">
+                <Card className="border border-border rounded-xl hover:bg-primary/5 transition-colors">
                   <CardContent className="p-4 flex justify-between items-center">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -256,7 +256,7 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 bg-slate-50 rounded-2xl border border-dashed border-border/80">
+          <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 bg-primary/[0.02] rounded-2xl border border-dashed border-primary/20">
             <UserPlus className="h-8 w-8 text-slate-400" />
             <p className="text-xs font-bold text-foreground">No remittances scheduled yet</p>
             <p className="text-xs text-muted-foreground">Create a scheduled payment above to start automations.</p>
@@ -303,7 +303,7 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center py-8 text-center bg-slate-50 rounded-xl border border-dashed border-border/60">
+          <div className="flex flex-col items-center justify-center py-8 text-center bg-primary/[0.02] rounded-xl border border-dashed border-primary/20">
             <p className="text-xs text-muted-foreground">No automated payments executed yet</p>
           </div>
         )}
