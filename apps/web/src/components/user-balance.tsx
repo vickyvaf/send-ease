@@ -117,6 +117,7 @@ export function UserBalance() {
 
   // Compute total USD balance (all stablecoins are ~1 USD each)
   const totalUsdBalance = tokenBalances.reduce((sum, tb) => sum + tb.amount, 0);
+  const activeBalances = tokenBalances.filter((tb) => tb.amount > 0);
 
   if (!isConnected || !address) {
     return (
@@ -133,7 +134,7 @@ export function UserBalance() {
   return (
     <div className="w-full bg-white border border-slate-200/80 rounded-3xl p-4 shadow-sm text-slate-900 relative animate-in fade-in duration-300">
       {/* Total Balance Panel */}
-      <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between h-[100px]">
+      <div className="relative bg-slate-50/70 border border-slate-100 rounded-2xl p-4 flex flex-col justify-between h-[100px]">
         <div className="flex justify-between items-center w-full">
           <span className="text-xs font-bold text-slate-400 tracking-wider">Total Balance</span>
         </div>
@@ -145,6 +146,25 @@ export function UserBalance() {
             <span className="text-xs font-bold text-slate-400">USD</span>
           </div>
         </div>
+        {!loading && activeBalances.length > 0 && (
+          <div className="absolute bottom-4 right-4 flex -space-x-1.5">
+            {activeBalances.map((tb) => (
+              <div
+                key={tb.symbol}
+                className="h-6 w-6 rounded-full flex items-center justify-center border border-slate-200/80 bg-white shadow-xs overflow-hidden"
+                title={`${tb.symbol}: ${formatAmount(tb.amount)}`}
+              >
+                <Image
+                  src={tokenIcons[tb.symbol]}
+                  alt={tb.symbol}
+                  width={24}
+                  height={24}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Token Cards Grid with expand/collapse */}

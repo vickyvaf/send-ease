@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
-import { ArrowDown, ArrowUp, ChevronDown, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
-import { useAccount, usePublicClient } from "wagmi";
-import { formatUnits } from "viem";
-import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
 import { formatAmount } from "@/lib/app-utils";
+import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
+import { ArrowUpDown, ChevronDown, Send } from "lucide-react";
+import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
+import { formatUnits } from "viem";
+import { useAccount, usePublicClient } from "wagmi";
 
 import usdcIcon from "@/assets/usdc.png";
 import usdmIcon from "@/assets/usdm.png";
@@ -275,10 +275,7 @@ export function SwapWidget() {
             className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-600 hover:text-[#09955F] hover:bg-slate-50 active:scale-95 transition-all duration-300 shadow-sm"
             aria-label="Swap directions"
           >
-            <div className="flex items-center -space-x-1.5">
-              <ArrowUp className="w-5 h-5 -translate-y-[2px]" />
-              <ArrowDown className="w-5 h-5 translate-y-[2px]" />
-            </div>
+            <ArrowUpDown className="w-5 h-5" />
           </button>
         </div>
 
