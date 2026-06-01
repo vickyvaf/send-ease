@@ -151,16 +151,24 @@ export function UserBalance() {
             {activeBalances.map((tb) => (
               <div
                 key={tb.symbol}
-                className="h-6 w-6 rounded-full flex items-center justify-center border border-slate-200/80 bg-white shadow-xs overflow-hidden"
-                title={`${tb.symbol}: ${formatAmount(tb.amount)}`}
+                className="group relative h-6 w-6 cursor-pointer"
               >
-                <Image
-                  src={tokenIcons[tb.symbol]}
-                  alt={tb.symbol}
-                  width={24}
-                  height={24}
-                  className="h-full w-full object-cover"
-                />
+                <div className="h-full w-full rounded-full flex items-center justify-center border border-slate-200/80 bg-white shadow-xs overflow-hidden">
+                  <Image
+                    src={tokenIcons[tb.symbol]}
+                    alt={tb.symbol}
+                    width={24}
+                    height={24}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                {/* Tooltip */}
+                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:flex flex-col items-center pointer-events-none z-50 transition-all duration-150 ease-out animate-in fade-in slide-in-from-bottom-1">
+                  <div className="bg-slate-900/95 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-md whitespace-nowrap">
+                    {tb.symbol}: {formatAmount(tb.amount)}
+                  </div>
+                  <div className="w-1.5 h-1.5 bg-slate-900/95 rotate-45 -mt-1.5" />
+                </div>
               </div>
             ))}
           </div>
