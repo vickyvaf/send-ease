@@ -279,15 +279,15 @@ export default function CreateRemittance() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="space-y-1">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold text-foreground leading-none">New Remittance</h1>
         </div>
-        <p className="text-xs text-muted-foreground pl-1">Describe in text or fill out the schedule manually.</p>
+        <p className="text-xs text-muted-foreground pl">Fill out the schedule details manually.</p>
       </div>
 
-      {/* AI Parsing Block */}
+      {/* AI Parsing Block (Hidden for now)
       <Card className="border border-primary/20 bg-primary/[0.02] rounded-2xl shadow-none">
         <CardContent className="p-4 space-y-3">
           <div className="flex items-center gap-1.5 text-primary text-xs font-bold tracking-wider">
@@ -317,6 +317,7 @@ export default function CreateRemittance() {
           )}
         </CardContent>
       </Card>
+      */}
 
       {/* Manual Input Form */}
       <div className="space-y-4">
@@ -340,7 +341,7 @@ export default function CreateRemittance() {
 
           {/* Phone Number */}
           <div className="space-y-1.5">
-            <Label htmlFor="recipientPhone" className="text-xs font-bold text-slate-500 flex items-center gap-1">
+            <Label htmlFor="recipientPhone" className="text-xs font-bold text-foreground flex items-center gap-1">
               <Phone size={13} className="text-slate-400" />
               Recipient Phone Number (Optional)
             </Label>
