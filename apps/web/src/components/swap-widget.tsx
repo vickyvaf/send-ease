@@ -4,11 +4,24 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { ArrowUpDown, ChevronDown, Send, Search, ScanLine, Copy, Check, X } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Send, Search, Copy, Check, X, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { formatUnits, isAddress } from "viem";
-import { useAccount, usePublicClient } from "wagmi";
+import { formatUnits, isAddress, parseUnits } from "viem";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
+
+const ERC20_TRANSFER_ABI = [
+  {
+    inputs: [
+      { name: "recipient", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+] as const;
 
 import usdcIcon from "@/assets/usdc.png";
 import usdmIcon from "@/assets/usdm.png";
@@ -24,99 +37,13 @@ const tokenIcons = {
   USDT: usdtIcon,
 };
 
-function QRScanner({ onScan, onClose }: { onScan: (url: string) => void; onClose: () => void }) {
-  const scannerRef = useRef<any>(null);
-  const [isStopping, setIsStopping] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
-    let html5QrCode: any = null;
-
-    import("html5-qrcode").then(({ Html5Qrcode }) => {
-      if (!isMounted) return;
-
-      html5QrCode = new Html5Qrcode("reader-widget");
-      scannerRef.current = html5QrCode;
-
-      html5QrCode.start(
-        { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: 250,
-          aspectRatio: 1.0,
-        },
-        (decodedText: string) => {
-          if (!isStopping) {
-            handleStop().then(() => onScan(decodedText));
-          }
-        },
-        () => { } // Ignore scan errors
-      ).then(() => {
-        if (!isMounted && html5QrCode) {
-          if (html5QrCode.isScanning) {
-            html5QrCode.stop()
-              .then(() => html5QrCode.clear())
-              .catch(() => { });
-          }
-        }
-      }).catch((err: any) => {
-        console.error("Camera access error:", err);
-      });
-    });
-
-    return () => {
-      isMounted = false;
-      if (html5QrCode) {
-        if (html5QrCode.isScanning) {
-          html5QrCode.stop()
-            .then(() => html5QrCode.clear())
-            .catch(() => { });
-        }
-      }
-    };
-  }, []);
-
-  const handleStop = async () => {
-    setIsStopping(true);
-    if (scannerRef.current) {
-      try {
-        if (scannerRef.current.isScanning || scannerRef.current.getState() === 2 /* SCANNING */) {
-          await scannerRef.current.stop();
-        }
-        scannerRef.current.clear();
-      } catch (e) {
-        console.error("Failed to stop scanner", e);
-      }
-    }
-  };
-
-  const handleCancel = async () => {
-    await handleStop();
-    onClose();
-  };
-
-  return (
-    <div className="flex flex-col items-center w-full">
-      <div id="reader-widget" className="w-full max-w-full rounded-3xl border border-slate-200/80 bg-black aspect-square relative flex items-center justify-center overflow-hidden [&_video]:!object-cover [&_video]:!w-full [&_video]:!h-full [&_video]:!rounded-3xl [&_video]:!m-0 [&_canvas]:!w-full [&_canvas]:!h-full [&_canvas]:!absolute [&_canvas]:!top-0 [&_canvas]:!left-0 [&_canvas]:!rounded-3xl shadow-inner">
-        <span className="text-white/50 text-xs absolute z-0">
-          {isStopping ? "Stopping camera..." : "Requesting camera..."}
-        </span>
-      </div>
-      <button
-        onClick={handleCancel}
-        disabled={isStopping}
-        className="mt-6 font-bold text-slate-500 hover:text-slate-800 p-2 disabled:opacity-50 text-sm active:scale-95 transition-all"
-      >
-        {isStopping ? "Closing..." : "Cancel scan"}
-      </button>
-    </div>
-  );
-}
 
 export function SwapWidget() {
   const { showToast } = useToast();
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
+  const { data: walletClient } = useWalletClient();
 
   const [sellAmount, setSellAmount] = useState<string>("");
   const [sellToken, setSellToken] = useState<StablecoinSymbol>("USDm");
@@ -140,56 +67,9 @@ export function SwapWidget() {
   const [isTransferring, setIsTransferring] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
 
-  const handleScanResult = (decodedText: string) => {
-    const text = decodedText.trim();
-    if (isAddress(text)) {
-      setResolvedAddress(text);
-      setPhoneResolutionStatus({
-        type: "success",
-        message: `Wallet found: ${text.slice(0, 6)}...${text.slice(-4)}`,
-      });
-      showToast("Scanned wallet address successfully!", "success");
-      return;
-    }
 
-    try {
-      const url = new URL(text);
-      const to = url.searchParams.get("to");
-      if (to && isAddress(to)) {
-        setResolvedAddress(to);
-        setPhoneResolutionStatus({
-          type: "success",
-          message: `Wallet found: ${to.slice(0, 6)}...${to.slice(-4)}`,
-        });
-        showToast("Scanned wallet address successfully!", "success");
-        return;
-      }
-    } catch (e) {
-      // not a url
-    }
 
-    let cleaned = text.replace(/[^\d+]/g, "");
-    if (cleaned.startsWith("+")) {
-      const matchedCountry = countries.find(c => cleaned.startsWith(c.code));
-      if (matchedCountry) {
-        setSelectedPrefix(matchedCountry.code);
-        setPhoneNumber(cleaned.slice(matchedCountry.code.length));
-        showToast(`Scanned phone number: ${cleaned}`, "success");
-        return;
-      }
-    }
-
-    const digitsOnly = text.replace(/[^\d]/g, "");
-    if (digitsOnly.length >= 5) {
-      setPhoneNumber(digitsOnly);
-      showToast(`Scanned phone number: ${digitsOnly}`, "success");
-      return;
-    }
-
-    showToast("QR code format unrecognized.", "error");
-  };
 
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
@@ -401,41 +281,6 @@ export function SwapWidget() {
   }, [phoneNumber, selectedPrefix]);
 
   const handlePhoneLookup = async () => {
-    // If running in MiniPay, use the native contact picker
-    if (typeof window !== "undefined" && (window as any).ethereum?.isMiniPay) {
-      setIsResolvingPhone(true);
-      setResolvedAddress("");
-      setPhoneResolutionStatus(null);
-      try {
-        const contact = await (window as any).ethereum.request({
-          method: "minipay_requestContact",
-        });
-        if (contact && contact.address) {
-          setResolvedAddress(contact.address);
-
-          const displayName = contact.name || "Contact";
-          setPhoneResolutionStatus({
-            type: "success",
-            message: `Wallet found: ${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`,
-          });
-
-          if (contact.name) {
-            showToast(`Selected contact: ${contact.name}`, "success");
-          } else {
-            showToast("Contact resolved successfully!", "success");
-          }
-        } else {
-          showToast("No contact selected", "error");
-        }
-      } catch (e: any) {
-        console.error("minipay_requestContact failed:", e);
-        showToast("Failed to retrieve contact from MiniPay", "error");
-      } finally {
-        setIsResolvingPhone(false);
-      }
-      return;
-    }
-
     let cleanedNumber = phoneNumber.trim().replace(/[^\d]/g, "");
     if (cleanedNumber.startsWith("0")) {
       cleanedNumber = cleanedNumber.substring(1);
@@ -448,7 +293,11 @@ export function SwapWidget() {
     resolvePhoneAddress(fullPhoneNumber);
   };
 
-  const handleAction = () => {
+  const handleAction = async () => {
+    if (!isConnected || !address || !walletClient || !publicClient) {
+      showToast("Please connect your wallet first", "error");
+      return;
+    }
     if (!buyToken) {
       showToast("Please select a token to buy", "error");
       return;
@@ -467,22 +316,49 @@ export function SwapWidget() {
       return;
     }
 
+    if (!resolvedAddress) {
+      showToast("Recipient wallet address is not resolved yet", "error");
+      return;
+    }
+
     const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
-    const destinationDesc = resolvedAddress
-      ? `${resolvedAddress.slice(0, 6)}...${resolvedAddress.slice(-4)} (${fullPhoneNumber})`
-      : fullPhoneNumber;
+    const destinationDesc = `${resolvedAddress.slice(0, 6)}...${resolvedAddress.slice(-4)} (${fullPhoneNumber})`;
 
     setIsTransferring(true);
-    showToast(`Initiating transfer: ${sellAmount} ${sellToken} to ${buyToken} (${destinationDesc})...`, "success");
+    showToast(`Initiating transfer of ${sellAmount} ${sellToken}...`, "success");
 
-    setTimeout(() => {
-      setIsTransferring(false);
-      showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${buyToken}!`, "success");
+    try {
+      const tokens = getStablecoinTokens(chainId);
+      const token = tokens.find((t) => t.symbol === sellToken);
+      if (!token) {
+        showToast("Invalid sell token", "error");
+        setIsTransferring(false);
+        return;
+      }
+
+      const amountWei = parseUnits(sellAmount, token.decimals);
+
+      const txHash = await walletClient.writeContract({
+        address: token.address,
+        abi: ERC20_TRANSFER_ABI,
+        functionName: "transfer",
+        args: [resolvedAddress as `0x${string}`, amountWei],
+      });
+
+      showToast("Waiting for transaction confirmation...", "success");
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+      showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${destinationDesc}!`, "success");
       setSellAmount("");
       setPhoneNumber("");
       setResolvedAddress("");
       setPhoneResolutionStatus(null);
-    }, 2000);
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || "Transfer failed. Please try again.", "error");
+    } finally {
+      setIsTransferring(false);
+    }
   };
 
   const filteredCountries = countries.filter(
@@ -741,15 +617,20 @@ export function SwapWidget() {
             className="bg-transparent border-none outline-none text-sm font-semibold p-0 text-slate-900 placeholder-slate-300 w-full focus:ring-0"
           />
 
-          {/* QR Scanner Button */}
-          <button
-            type="button"
-            onClick={() => setShowScanner(true)}
-            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#09955F] transition-all shrink-0"
-            title="Scan QR code"
-          >
-            <ScanLine className="w-4.5 h-4.5" />
-          </button>
+          {isResolvingPhone ? (
+            <Loader2 className="w-4 h-4 animate-spin text-[#09955F] shrink-0" />
+          ) : (
+            phoneNumber.replace(/[^\d]/g, "").length >= 5 && (
+              <button
+                type="button"
+                onClick={handlePhoneLookup}
+                className="p-1 hover:bg-slate-100 rounded-lg text-[#09955F] transition-all shrink-0"
+                title="Lookup phone number"
+              >
+                <Search className="w-4 h-4" />
+              </button>
+            )
+          )}
         </div>
 
         {phoneResolutionStatus && (
@@ -796,29 +677,7 @@ export function SwapWidget() {
         )}
       </Button>
 
-      {showScanner && (
-        <div className="fixed inset-0 z-[110] flex flex-col justify-end items-center animate-in fade-in duration-250">
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowScanner(false)}></div>
-          <div className="relative bg-white text-slate-900 w-full max-w-md rounded-t-3xl p-6 pb-10 border-t border-slate-200 animate-in slide-in-from-bottom-full duration-300 flex flex-col items-center">
-            <div className="flex justify-between items-center w-full mb-6">
-              <h2 className="text-lg font-bold text-slate-800">Scan QR Code</h2>
-              <button
-                onClick={() => setShowScanner(false)}
-                className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-800 active:scale-95 transition-all"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <QRScanner
-              onScan={(decodedText) => {
-                setShowScanner(false);
-                handleScanResult(decodedText);
-              }}
-              onClose={() => setShowScanner(false)}
-            />
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }

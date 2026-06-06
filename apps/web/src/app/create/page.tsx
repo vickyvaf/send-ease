@@ -27,7 +27,6 @@ export default function CreateRemittance() {
     message: string;
   }>({ type: "idle", message: "" });
   const [showManualAddress, setShowManualAddress] = useState(false);
-  const [showMockContactPicker, setShowMockContactPicker] = useState(false);
 
   // Calendar State
   const [showCalendar, setShowCalendar] = useState(false);
@@ -59,153 +58,6 @@ export default function CreateRemittance() {
   };
 
   const handlePhoneLookup = async (phone: string) => {
-    // If phone is empty, it means we clicked "Pick from Contacts"
-    if (!phone) {
-      setIsResolvingPhone(true);
-      setPhoneResolutionStatus({ type: "idle", message: "" });
-
-      // 1. Try standard Web Contact Picker API first to trigger native permission prompt under direct user gesture
-      if (typeof navigator !== "undefined" && 'contacts' in navigator) {
-        try {
-          const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
-          if (contacts && contacts.length > 0) {
-            const contact = contacts[0];
-            const name = contact.name?.[0] || "";
-            const rawPhone = contact.tel?.[0] || "";
-            if (name) setRecipientName(name);
-
-            if (rawPhone) {
-              const cleanedPhone = rawPhone.trim().replace(/[^\d+]/g, "");
-              setPhoneResolutionStatus({ type: "idle", message: "Resolving contact address..." });
-              
-              const res = await fetch("/api/agent/lookup", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phoneNumber: cleanedPhone }),
-              });
-              const data = await res.json();
-              if (res.ok && data.success && data.walletAddress) {
-                setRecipientAddress(data.walletAddress);
-                const shortAddr = `${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`;
-                setPhoneResolutionStatus({
-                  type: "success",
-                  message: `Address found: ${shortAddr}`
-                });
-                
-                const matchedCountry = countries.find(c => cleanedPhone.startsWith(c.code));
-                if (matchedCountry) {
-                  setSelectedPrefix(matchedCountry.code);
-                  setRecipientPhone(cleanedPhone.slice(matchedCountry.code.length));
-                } else {
-                  setRecipientPhone(cleanedPhone);
-                }
-                showToast("Address resolved from contact!", "success");
-                setIsResolvingPhone(false);
-                return;
-              } else {
-                setPhoneResolutionStatus({
-                  type: "not_found",
-                  message: `Contact selected, but no wallet registered for ${cleanedPhone}.`
-                });
-              }
-            }
-          }
-          setIsResolvingPhone(false);
-          return;
-        } catch (webContactErr) {
-          console.warn("Web Contact Picker failed, trying RPC fallback:", webContactErr);
-        }
-      }
-
-      // 2. Fallback to MiniPay RPC method
-      if (typeof window !== "undefined") {
-        const ethereum = (window as any).ethereum;
-        
-        // Check if we can invoke the RPC call
-        if (ethereum) {
-          try {
-            // MiniPay standard contact method request
-            const contact = await ethereum.request({
-              method: "minipay_requestContact",
-            });
-
-            if (contact && contact.address) {
-              setRecipientAddress(contact.address);
-              if (contact.name) {
-                setRecipientName(contact.name);
-              }
-              if (contact.phoneNumber) {
-                const phoneVal = contact.phoneNumber;
-                const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
-                if (matchedCountry) {
-                  setSelectedPrefix(matchedCountry.code);
-                  setRecipientPhone(phoneVal.slice(matchedCountry.code.length));
-                } else {
-                  setRecipientPhone(phoneVal);
-                }
-              }
-              const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
-              setPhoneResolutionStatus({
-                type: "success",
-                message: `Address found: ${shortAddr}`
-              });
-              showToast("Address found successfully!", "success");
-            } else {
-              setPhoneResolutionStatus({
-                type: "not_found",
-                message: "No contact selected or contact has no wallet."
-              });
-            }
-          } catch (err: any) {
-            console.error("Failed to retrieve contact from MiniPay:", err);
-            
-            // Safe parsing of error message
-            const errStr = typeof err === "string" ? err : err?.message || err?.details || "";
-            const errCode = err?.code;
-
-            // Check if user cancelled or dismissed the contact picker
-            const isUserRejected = errCode === 4001 || 
-                                   errStr.toLowerCase().includes("user rejected");
-            if (isUserRejected) {
-              setPhoneResolutionStatus({
-                type: "idle",
-                message: ""
-              });
-              setIsResolvingPhone(false);
-              setShowManualAddress(true);
-              return;
-            }
-
-            const isMiniPayApp = typeof window !== "undefined" && (window as any).ethereum?.isMiniPay;
-
-            if (isMiniPayApp) {
-              // We are in MiniPay. Do NOT open the Mock Contact Picker.
-              // Show the actual error message so the user can verify permissions, etc.
-              setPhoneResolutionStatus({
-                type: "not_found",
-                message: `Failed to retrieve contact: ${errStr}. Please enter the phone number or address manually.`
-              });
-              showToast(`Contacts lookup failed: ${errStr}`, "error");
-              setShowManualAddress(true);
-            } else {
-              // We are in desktop browser. Open Sendease Mock Contacts Directory for testing.
-              setShowMockContactPicker(true);
-              showToast("Opening Sendease Contacts Directory (Fallback)", "success");
-              setShowManualAddress(true);
-            }
-          } finally {
-            setIsResolvingPhone(false);
-          }
-        } else {
-          // No provider at all (e.g. Desktop browser testing) - open Mock Contact Picker
-          setShowMockContactPicker(true);
-          showToast("Opening Sendease Contacts Directory (Fallback)", "success");
-          setShowManualAddress(true);
-        }
-      }
-      return;
-    }
-
     if (!phone.startsWith("+") || phone.length < 8) {
       setPhoneResolutionStatus({ type: "idle", message: "" });
       return;
@@ -547,24 +399,6 @@ export default function CreateRemittance() {
               Recipient Phone Number
             </Label>
 
-            {/* MiniPay: show Contacts picker button as primary CTA */}
-            {typeof window !== "undefined" && (window as any).ethereum?.isMiniPay && !showManualAddress ? (
-              <button
-                type="button"
-                id="pickContact"
-                onClick={() => handlePhoneLookup("")}
-                disabled={isResolvingPhone}
-                className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-[#09955F]/40 bg-[#09955F]/[0.03] text-[#09955F] hover:bg-[#09955F]/[0.07] hover:border-[#09955F]/60 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
-              >
-                {isResolvingPhone ? (
-                  <Loader2 size={15} className="animate-spin" />
-                ) : (
-                  <Phone size={15} />
-                )}
-                {isResolvingPhone ? "Looking up..." : "Pick from Contacts"}
-              </button>
-            ) : (
-              /* Fallback: structured prefix + manual phone input (size medium, matching home screen design) */
               <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-10 shadow-xs relative">
                 {/* Prefix Selector Dropdown */}
                 <div className="relative shrink-0" ref={phoneDropdownRef}>
@@ -655,7 +489,6 @@ export default function CreateRemittance() {
                   )
                 )}
               </div>
-            )}
 
             {/* Status feedback */}
             {phoneResolutionStatus.type === "success" && (
@@ -946,78 +779,6 @@ export default function CreateRemittance() {
           <ArrowRight size={16} />
         </button>
       </div>
-
-      {/* Sendease Mock Contacts Directory Modal */}
-      {showMockContactPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 bg-[#09955F]/10 rounded-xl text-[#09955F]">
-                  <Phone size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-800">Contacts Directory</h3>
-                  <p className="text-[10px] text-slate-400">Select a mock contact to autofill</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowMockContactPicker(false)}
-                className="text-slate-400 hover:text-slate-600 text-xs font-bold p-1 hover:bg-slate-50 rounded-lg transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-              {[
-                { name: "Ana Smith", phone: "+628123456789", flag: "🇮🇩", desc: "Indonesia" },
-                { name: "John Doe", phone: "+2348012345678", flag: "🇳🇬", desc: "Nigeria" },
-                { name: "Jane Smith", phone: "+254712345678", flag: "🇰🇪", desc: "Kenya" },
-                { name: "Bob Johnson", phone: "+14155552671", flag: "🇺🇸", desc: "United States" },
-              ].map((c) => (
-                <button
-                  key={c.phone}
-                  type="button"
-                  onClick={async () => {
-                    setRecipientName(c.name);
-                    const matchedCountry = countries.find(co => c.phone.startsWith(co.code));
-                    if (matchedCountry) {
-                      setSelectedPrefix(matchedCountry.code);
-                      setRecipientPhone(c.phone.slice(matchedCountry.code.length));
-                    } else {
-                      setRecipientPhone(c.phone);
-                    }
-                    setShowMockContactPicker(false);
-                    // Trigger lookup for this number
-                    handlePhoneLookup(c.phone);
-                  }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-[#09955F]/30 hover:bg-[#09955F]/[0.02] text-left transition-all active:scale-[0.98] group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600 group-hover:bg-[#09955F]/10 group-hover:text-[#09955F] transition-colors">
-                      {c.name.split(" ").map(n => n[0]).join("")}
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-800">{c.name}</p>
-                      <p className="text-[10px] text-slate-500 font-mono">{c.phone}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-sm">{c.flag}</span>
-                    <p className="text-[9px] text-slate-400">{c.desc}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            <p className="text-[10px] text-center text-slate-400">
-              Mock Contacts enable seamless end-to-end testing outside real devices.
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
