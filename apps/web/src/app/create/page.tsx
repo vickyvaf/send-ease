@@ -112,15 +112,27 @@ export default function CreateRemittance() {
             const errStr = typeof err === "string" ? err : err?.message || err?.details || "";
             const errCode = err?.code;
 
-            // Check if user cancelled or dismissed the contact picker (Required value was null is thrown by Kotlin when native picker is closed/cancelled)
+            // Check if user cancelled or dismissed the contact picker
             const isUserRejected = errCode === 4001 || 
-                                   errStr.toLowerCase().includes("user rejected") ||
-                                   errStr.toLowerCase().includes("required value was null");
+                                   errStr.toLowerCase().includes("user rejected");
             if (isUserRejected) {
               setPhoneResolutionStatus({
                 type: "idle",
                 message: ""
               });
+              setIsResolvingPhone(false);
+              setShowManualAddress(true);
+              return;
+            }
+
+            // Check if native picker failed to open (usually due to disabled Contacts permission in Android settings)
+            const isPermissionError = errStr.toLowerCase().includes("required value was null");
+            if (isPermissionError) {
+              setPhoneResolutionStatus({
+                type: "not_found",
+                message: "Could not open contacts. Please ensure Opera Mini / MiniPay has 'Contacts' permission enabled in your phone's App Settings, or enter the address manually below."
+              });
+              showToast("Contacts permission might be disabled in phone settings.", "error");
               setIsResolvingPhone(false);
               setShowManualAddress(true);
               return;
