@@ -108,8 +108,12 @@ export default function CreateRemittance() {
           } catch (err: any) {
             console.error("Failed to retrieve contact from MiniPay:", err);
             
+            // Safe parsing of error message
+            const errStr = typeof err === "string" ? err : err?.message || err?.details || "";
+            const errCode = err?.code;
+
             // Check if user cancelled
-            const isUserRejected = err.code === 4001 || err.message?.toLowerCase().includes("user rejected");
+            const isUserRejected = errCode === 4001 || errStr.toLowerCase().includes("user rejected");
             if (isUserRejected) {
               setPhoneResolutionStatus({
                 type: "idle",
@@ -119,25 +123,26 @@ export default function CreateRemittance() {
               return;
             }
 
-            const errMessageLower = err.message?.toLowerCase() || "";
+            const errMessageLower = errStr.toLowerCase();
             const isUnsupported = errMessageLower.includes("method") || 
                                   errMessageLower.includes("support") || 
                                   errMessageLower.includes("not found") || 
                                   errMessageLower.includes("not exist") ||
-                                  err.code === -32601;
+                                  errCode === -32601;
             const isMiniPayApp = typeof window !== "undefined" && (window as any).ethereum?.isMiniPay;
+
+            // Always enable manual address input fallback if contact picker fails
+            setShowManualAddress(true);
 
             if (isUnsupported) {
               if (isMiniPayApp) {
                 showToast("Contact picker is not supported on this version of MiniPay.", "error");
-                setShowManualAddress(true);
                 setPhoneResolutionStatus({
                   type: "not_found",
                   message: "Contact picker is not supported on this version of MiniPay. Please type the phone number or address manually."
                 });
               } else {
                 showToast("Contacts picker only works inside MiniPay app.", "error");
-                setShowManualAddress(true);
                 setPhoneResolutionStatus({
                   type: "not_found",
                   message: "Contacts picker only works inside MiniPay app. Please type number manually."
