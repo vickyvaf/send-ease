@@ -28,20 +28,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: "Agent private key is not configured" }, { status: 503 });
     }
 
-    const envChainId = process.env.NEXT_PUBLIC_CHAIN_ID || "42220";
-    const chainId = parseInt(envChainId, 10);
-
-    // Select context name based on chain ID
-    // 42220 is Celo Mainnet. Others (Sepolia, Alfajores) use Alfajores context.
-    const isMainnet = chainId === 42220;
-    const odisContext = isMainnet
-      ? OdisUtils.Query.OdisContextName.MAINNET
-      : OdisUtils.Query.OdisContextName.ALFAJORES;
-
-    const rpcUrl =
-      process.env.CELO_RPC_URL ||
-      process.env.NEXT_PUBLIC_CELO_RPC_URL ||
-      (isMainnet ? "https://forno.celo.org" : "https://alfajores-forno.celo-testnet.org");
+    // Force Celo Mainnet for ODIS lookups as real phone-to-address mappings only exist on Mainnet
+    const chainId = 42220;
+    const odisContext = OdisUtils.Query.OdisContextName.MAINNET;
+    const rpcUrl = process.env.CELO_RPC_URL || "https://forno.celo.org";
 
     const pk = privateKey.startsWith("0x") ? privateKey : `0x${privateKey}`;
     const kit = newKit(rpcUrl);
@@ -53,20 +43,14 @@ export async function POST(request: Request) {
     kit.defaultAccount = locals[0];
     const quotaAccount = locals[0];
 
-    // Define correct service context. The SDK's built-in Alfajores URL is deprecated/offline.
-    const serviceContext = isMainnet
-      ? OdisUtils.Query.getServiceContext(odisContext, OdisUtils.Query.OdisAPI.PNP)
-      : {
-          odisUrl: "https://us-central1-celo-phone-number-privacy.cloudfunctions.net",
-          odisPubKey: "kPoRxWdEdZ/Nd3uQnp3FJFs54zuiS+ksqvOm9x8vY6KHPG8jrfqysvIRU0wtqYsBKA7SoAsICMBv8C/Fb2ZpDOqhSqvr/sZbZoHmQfvbqrzbtDIPvUIrHgRS0ydJCMsA",
-        };
+    const serviceContext = OdisUtils.Query.getServiceContext(odisContext, OdisUtils.Query.OdisAPI.PNP);
 
     const authSigner: any = {
       authenticationMethod: OdisUtils.Query.AuthenticationMethod.WALLET_KEY,
       contractKit: kit as any,
     };
 
-    console.log(`Performing ODIS lookup for phone: ${phoneNumber} using account: ${quotaAccount} on context: ${odisContext}`);
+    console.log(`Performing ODIS lookup for phone: ${phoneNumber} using account: ${quotaAccount} on Mainnet`);
 
     let obfuscatedIdentifier: string;
     try {
@@ -80,26 +64,6 @@ export async function POST(request: Request) {
       obfuscatedIdentifier = response.obfuscatedIdentifier;
     } catch (odisErr: any) {
       console.error("ODIS getObfuscatedIdentifier failed:", odisErr);
-
-      // Fallback for development/testing if relayer has no ODIS quota or lookup fails
-      const host = request.headers.get("host") || "";
-      const isLocalOrTunnel = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("ngrok") || host.includes("localto.net");
-      const isDev = !isMainnet || process.env.NODE_ENV === "development" || isLocalOrTunnel || rpcUrl.includes("localhost") || rpcUrl.includes("127.0.0.1");
-      
-      if (isDev) {
-        console.log("ODIS lookup failed, using deterministic fallback address for development/testing.");
-        const crypto = require("crypto");
-        const hash = crypto.createHash("sha256").update(phoneNumber).digest("hex");
-        const mockAddress = `0x${hash.slice(0, 40)}`;
-        return NextResponse.json({
-          success: true,
-          phoneNumber,
-          walletAddress: mockAddress,
-          isMock: true,
-          warning: "Using fallback address for testing (ODIS quota limit)."
-        });
-      }
-
       return NextResponse.json({
         success: false,
         error: `ODIS lookup failed: ${odisErr.message || odisErr}`
@@ -112,27 +76,6 @@ export async function POST(request: Request) {
       const resolvedAddress = accounts[0] || null;
 
       console.log(`ODIS lookup completed. Resolved address: ${resolvedAddress}`);
-
-      if (!resolvedAddress) {
-        // Fallback for development/testing if number is not registered on MiniPay
-        const host = request.headers.get("host") || "";
-        const isLocalOrTunnel = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("ngrok") || host.includes("localto.net");
-        const isDev = !isMainnet || process.env.NODE_ENV === "development" || isLocalOrTunnel || rpcUrl.includes("localhost") || rpcUrl.includes("127.0.0.1");
-        
-        if (isDev) {
-          console.log("Phone number not registered on MiniPay. Using deterministic mock address for development/testing.");
-          const crypto = require("crypto");
-          const hash = crypto.createHash("sha256").update(phoneNumber).digest("hex");
-          const mockAddress = `0x${hash.slice(0, 40)}`;
-          return NextResponse.json({
-            success: true,
-            phoneNumber,
-            walletAddress: mockAddress,
-            isMock: true,
-            warning: "Mock address generated (Phone number not registered on MiniPay)."
-          });
-        }
-      }
 
       return NextResponse.json({
         success: true,

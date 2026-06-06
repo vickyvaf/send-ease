@@ -8,10 +8,13 @@ import { isValidAddress } from "@/lib/app-utils";
 import { ArrowRight, Calendar, Check, CheckCircle2, ChevronDown, Copy, Loader2, Phone, Search, Share2, User, UserX, Wallet } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useAccount } from "wagmi";
 
 export default function CreateRemittance() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { chain } = useAccount();
+  const chainId = chain?.id || 42220;
 
   // Form Fields
   const [recipientName, setRecipientName] = useState("");
@@ -71,7 +74,7 @@ export default function CreateRemittance() {
       const res = await fetch("/api/agent/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: sanitizedPhone }),
+        body: JSON.stringify({ phoneNumber: sanitizedPhone, chainId }),
       });
 
       const data = await res.json();
@@ -129,7 +132,7 @@ export default function CreateRemittance() {
         const res = await fetch("/api/agent/lookup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: fullPhoneNumber }),
+          body: JSON.stringify({ phoneNumber: fullPhoneNumber, chainId }),
         });
 
         const data = await res.json();

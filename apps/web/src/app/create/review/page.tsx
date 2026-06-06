@@ -58,7 +58,7 @@ export default function ReviewApprove() {
 
   const chainId = chain?.id || 42220;
   const contractAddress = REMITTANCE_ADDRESSES[chainId as keyof typeof REMITTANCE_ADDRESSES] || REMITTANCE_ADDRESSES[42220];
-  
+
   const tokens = getStablecoinTokens(chainId);
   const usdmToken = tokens.find((t) => t.symbol === "USDm") || tokens[1];
 
@@ -115,7 +115,7 @@ export default function ReviewApprove() {
         const amountWei = parseUnits(pending.amount.toString(), token.decimals);
         setStep("approve");
         showToast(`Checking token allowance for ${symbol}...`, "success");
-        
+
         const currentAllowance = await publicClient.readContract({
           address: token.address,
           abi: ERC20_ABI,
@@ -125,7 +125,7 @@ export default function ReviewApprove() {
 
         if (currentAllowance < amountWei) {
           showToast(`Approving ${symbol} stablecoin for scheduler...`, "success");
-          
+
           // Approve Max to avoid repeated allowance prompts
           const maxVal = parseUnits("100000000", token.decimals);
           const approveHash = await walletClient.writeContract({
@@ -146,7 +146,7 @@ export default function ReviewApprove() {
 
       const frequencyId = pending.frequency === "One-time" ? 0 : pending.frequency === "Weekly" ? 1 : 2;
       const startTimestamp = Math.floor(new Date(pending.startDate).getTime() / 1000);
-      const limitAmountWei = pending.hasMonthlyLimit 
+      const limitAmountWei = pending.hasMonthlyLimit
         ? parseUnits(pending.maxMonthlyAmount.toString(), usdmToken.decimals)
         : 0n;
       const amountWei = parseUnits(pending.amount.toString(), usdmToken.decimals);
@@ -169,7 +169,7 @@ export default function ReviewApprove() {
 
       showToast("Creating schedule on-chain...", "success");
       await publicClient.waitForTransactionReceipt({ hash: createHash });
-      
+
       showToast("Remittance scheduled successfully!", "success");
       setStep("done");
 
@@ -178,13 +178,13 @@ export default function ReviewApprove() {
         const rawPhone = (pending.recipientPhone || "").trim();
         let prefix = "+62";
         let phoneNumber = rawPhone;
-        
+
         const matched = countries.find(c => rawPhone.startsWith(c.code));
         if (matched) {
           prefix = matched.code;
           phoneNumber = rawPhone.slice(matched.code.length);
         }
-        
+
         const cleanPhone = phoneNumber.replace(/[^\d]/g, "");
 
         const savedContacts = localStorage.getItem("sendease_contact_history");
@@ -206,7 +206,7 @@ export default function ReviewApprove() {
           },
           ...filtered,
         ].slice(0, 10);
-        
+
         localStorage.setItem("sendease_contact_history", JSON.stringify(newHistory));
       } catch (err) {
         console.error("Failed to save contact to history", err);
@@ -229,8 +229,8 @@ export default function ReviewApprove() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <button 
-          onClick={() => router.back()} 
+        <button
+          onClick={() => router.back()}
           className="text-muted-foreground hover:text-foreground text-sm shrink-0 flex items-center gap-1 font-bold p-1 hover:bg-slate-100 rounded-lg transition-colors"
         >
           <ChevronLeft className="h-5 w-5" />
@@ -267,7 +267,7 @@ export default function ReviewApprove() {
               <p className="font-bold text-sm text-foreground">
                 ${formatAmount(pending.displayAmount)} USD
               </p>
-              <p className="text-xs text-slate-400">≈ {pending.amount.toFixed(2)} USDm</p>
+              <p className="text-xs text-slate-400">≈ {pending.amount} USDm</p>
             </div>
           </div>
 
@@ -302,7 +302,7 @@ export default function ReviewApprove() {
 
       {/* Select Payment Coins */}
       <div className="space-y-2.5">
-        <label className="text-xs font-bold text-muted-foreground tracking-wider uppercase">Select Payment Coins</label>
+        <label className="text-xs font-bold text-muted-foreground tracking-wider">Select Payment Coins</label>
         <div className="flex flex-wrap gap-2">
           {tokens.map((token) => {
             const isSelected = selectedTokens.includes(token.symbol);
@@ -320,11 +320,10 @@ export default function ReviewApprove() {
                     setSelectedTokens([...selectedTokens, token.symbol]);
                   }
                 }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold ${
-                  isSelected
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold ${isSelected
                     ? "bg-primary/10 border-primary text-primary shadow-xs"
                     : "bg-white border-border text-muted-foreground hover:bg-slate-50"
-                }`}
+                  }`}
               >
                 <div
                   className="w-2.5 h-2.5 rounded-full"

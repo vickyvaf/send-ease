@@ -258,7 +258,7 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
       const res = await fetch("/api/agent/lookup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: phone }),
+        body: JSON.stringify({ phoneNumber: phone, chainId }),
       });
       const data = await res.json();
       if (data.walletAddress) {
@@ -501,9 +501,6 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
                     <button
                       key={token}
                       onClick={() => {
-                        if (token === buyToken) {
-                          setBuyToken(sellToken);
-                        }
                         setSellToken(token);
                         setSellAmount(""); // Reset amount to prevent mismatch
                         setShowSellDropdown(false);
@@ -607,10 +604,6 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
                     <button
                       key={token}
                       onClick={() => {
-                        if (token === sellToken) {
-                          setSellToken(buyToken || "USDm");
-                          setSellAmount(""); // Reset amount because sell token changed
-                        }
                         setBuyToken(token);
                         setShowBuyDropdown(false);
                       }}
