@@ -3,12 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX, ChevronDown } from "lucide-react";
+import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX, ChevronDown, ScanLine } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/context/toast-context";
 import { isValidAddress } from "@/lib/app-utils";
+import { countries } from "@/constants/countries";
 
 export default function CreateRemittance() {
   const router = useRouter();
@@ -33,6 +34,12 @@ export default function CreateRemittance() {
     message: string;
   }>({ type: "idle", message: "" });
   const [showManualAddress, setShowManualAddress] = useState(false);
+
+  // Country Prefix Selector state
+  const [selectedPrefix, setSelectedPrefix] = useState<string>("+62");
+  const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
+  const [countrySearch, setCountrySearch] = useState("");
+  const phoneDropdownRef = useRef<HTMLDivElement>(null);
 
   const getInviteLink = () => {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -133,10 +140,14 @@ export default function CreateRemittance() {
 
   // Debounce phone lookup on typing
   useEffect(() => {
-    const sanitized = recipientPhone.replace(/[\s\-\(\)]/g, "");
-    if (!sanitized || !sanitized.startsWith("+") || sanitized.length < 5) {
+    let cleanedNumber = recipientPhone.trim().replace(/[^\d]/g, "");
+    if (cleanedNumber.startsWith("0")) {
+      cleanedNumber = cleanedNumber.substring(1);
+    }
+    if (!cleanedNumber || cleanedNumber.length < 3) {
       return;
     }
+    const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
 
     const delayDebounceFn = setTimeout(async () => {
       setIsResolvingPhone(true);
@@ -146,7 +157,7 @@ export default function CreateRemittance() {
         const res = await fetch("/api/agent/lookup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ phoneNumber: sanitized }),
+          body: JSON.stringify({ phoneNumber: fullPhoneNumber }),
         });
 
         const data = await res.json();
@@ -172,7 +183,7 @@ export default function CreateRemittance() {
     }, 300);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [recipientPhone]);
+  }, [recipientPhone, selectedPrefix]);
 
   // Amount is always entered in USD
   const [amountInput, setAmountInput] = useState("");
@@ -192,6 +203,9 @@ export default function CreateRemittance() {
     function handleClickOutside(event: MouseEvent) {
       if (frequencyDropdownRef.current && !frequencyDropdownRef.current.contains(event.target as Node)) {
         setShowFrequencyDropdown(false);
+      }
+      if (phoneDropdownRef.current && !phoneDropdownRef.current.contains(event.target as Node)) {
+        setShowPhoneDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -396,36 +410,94 @@ export default function CreateRemittance() {
                 {isResolvingPhone ? "Looking up..." : "Pick from Contacts"}
               </button>
             ) : (
-              /* Fallback: manual phone input + lookup button */
-              <div className="flex gap-2">
-                <Input
-                  id="recipientPhone"
-                  placeholder="e.g. +628123456789"
+              /* Fallback: structured prefix + manual phone input (size medium, matching home screen design) */
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 h-10 shadow-xs relative">
+                {/* Prefix Selector Dropdown */}
+                <div className="relative shrink-0" ref={phoneDropdownRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
+                    className="flex items-center gap-1 hover:bg-slate-50 active:scale-95 transition-all text-xs font-bold text-slate-800 pr-2 border-r border-slate-200"
+                  >
+                    <span>{countries.find((c) => c.code === selectedPrefix)?.flag || "🏳️"}</span>
+                    <span>{selectedPrefix}</span>
+                    <ChevronDown className="w-3 h-3 text-slate-400 shrink-0" />
+                  </button>
+
+                  {showPhoneDropdown && (
+                    <div className="absolute left-0 mt-3 w-56 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-30 animate-in fade-in duration-150 flex flex-col max-h-60 origin-top slide-in-from-top-2">
+                      {/* Search country */}
+                      <div className="px-2 pb-1.5 border-b border-slate-100 flex items-center gap-1">
+                        <Search className="w-3 h-3 text-slate-400 shrink-0" />
+                        <input
+                          type="text"
+                          placeholder="Search country..."
+                          value={countrySearch}
+                          onChange={(e) => setCountrySearch(e.target.value)}
+                          className="w-full text-xs border-none outline-none p-0 focus:ring-0 placeholder-slate-300 text-slate-700 bg-transparent"
+                        />
+                      </div>
+
+                      <div className="overflow-y-auto flex-1 mt-1">
+                        {countries
+                          .filter(
+                            (c) =>
+                              c.country.toLowerCase().includes(countrySearch.toLowerCase()) ||
+                              c.code.includes(countrySearch)
+                          )
+                          .map((c) => (
+                            <button
+                              key={`${c.code}-${c.country}`}
+                              type="button"
+                              onClick={() => {
+                                setSelectedPrefix(c.code);
+                                setShowPhoneDropdown(false);
+                                setCountrySearch("");
+                              }}
+                              className={`flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-50 transition-colors ${
+                                selectedPrefix === c.code ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
+                              }`}
+                            >
+                              <span className="text-xs flex items-center gap-1.5">
+                                <span>{c.flag}</span>
+                                <span className="truncate max-w-[100px]">{c.country}</span>
+                              </span>
+                              <span className="text-xs font-bold text-slate-400">{c.code}</span>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <input
+                  type="tel"
+                  placeholder="8123456789"
                   value={recipientPhone}
                   onChange={(e) => {
-                    setRecipientPhone(e.target.value);
+                    const val = e.target.value.replace(/[^\d]/g, "");
+                    setRecipientPhone(val);
                     if (phoneResolutionStatus.type !== "idle") {
                       setPhoneResolutionStatus({ type: "idle", message: "" });
                       setRecipientAddress("");
                     }
                   }}
-                  onBlur={() => {
-                    if (recipientPhone.startsWith("+") && recipientPhone.length >= 8) {
-                      handlePhoneLookup(recipientPhone);
-                    }
-                  }}
-                  className="rounded-xl border-border focus-visible:ring-[#09955F] flex-1"
+                  className="bg-transparent border-none outline-none text-xs font-semibold p-0 text-slate-900 placeholder-slate-300 w-full focus:ring-0"
                 />
-                {recipientPhone.startsWith("+") && recipientPhone.length >= 8 && (
-                  <button
-                    type="button"
-                    onClick={() => handlePhoneLookup(recipientPhone)}
-                    disabled={isResolvingPhone}
-                    className="px-3 bg-white hover:bg-primary/5 text-[#09955F] disabled:opacity-50 text-xs font-bold rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-1 active:scale-[0.98]"
-                  >
-                    {isResolvingPhone ? <Loader2 size={13} className="animate-spin text-[#09955F]" /> : <Search size={13} />}
-                    Lookup
-                  </button>
+
+                {isResolvingPhone ? (
+                  <Loader2 size={13} className="animate-spin text-[#09955F] shrink-0" />
+                ) : (
+                  recipientPhone.length >= 5 && (
+                    <button
+                      type="button"
+                      onClick={() => handlePhoneLookup(`${selectedPrefix}${recipientPhone}`)}
+                      className="p-1 hover:bg-slate-100 rounded-lg text-[#09955F] transition-all shrink-0"
+                      title="Lookup phone number"
+                    >
+                      <Search className="w-4 h-4" />
+                    </button>
+                  )
                 )}
               </div>
             )}
