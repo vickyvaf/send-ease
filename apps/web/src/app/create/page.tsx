@@ -69,17 +69,27 @@ export default function CreateRemittance() {
       setPhoneResolutionStatus({ type: "idle", message: "" });
       try {
         const ethereum = (window as any).ethereum;
-        // Verify specifically for MiniPay contact selection request method support
-        const contact = await ethereum.request({
-          method: "phoneBook_selectContact"
-        });
+        
+        // Try minipay_requestContact first (standard native method in most MiniPay versions)
+        let contact: any = null;
+        try {
+          contact = await ethereum.request({
+            method: "minipay_requestContact",
+          });
+        } catch (minipayErr) {
+          console.warn("minipay_requestContact failed, trying phoneBook_selectContact:", minipayErr);
+          // Fallback to phoneBook_selectContact method
+          contact = await ethereum.request({
+            method: "phoneBook_selectContact"
+          });
+        }
+
         if (contact && contact.address) {
           setRecipientAddress(contact.address);
           if (contact.name) {
             setRecipientName(contact.name);
           }
           if (contact.phoneNumber) {
-            // If phone has country prefix, extract it
             const phoneVal = contact.phoneNumber;
             const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
             if (matchedCountry) {
@@ -102,38 +112,11 @@ export default function CreateRemittance() {
           });
         }
       } catch (err: any) {
-        console.error("phoneBook_selectContact failed, trying minipay_requestContact fallback:", err);
-        try {
-          const contact = await (window as any).ethereum.request({
-            method: "minipay_requestContact",
-          });
-          if (contact && contact.address) {
-            setRecipientAddress(contact.address);
-            if (contact.name) {
-              setRecipientName(contact.name);
-            }
-            if (contact.phoneNumber) {
-              const phoneVal = contact.phoneNumber;
-              const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
-              if (matchedCountry) {
-                setSelectedPrefix(matchedCountry.code);
-                setRecipientPhone(phoneVal.slice(matchedCountry.code.length));
-              } else {
-                setRecipientPhone(phoneVal);
-              }
-            }
-            const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
-            setPhoneResolutionStatus({
-              type: "success",
-              message: `Address found: ${shortAddr}`
-            });
-            showToast("Address found successfully!", "success");
-            setIsResolvingPhone(false);
-            return;
-          }
-        } catch (innerErr) {
-          console.error("minipay_requestContact fallback failed:", innerErr);
-        }
+        console.error("Failed to retrieve contact from MiniPay:", err);
+        setPhoneResolutionStatus({
+          type: "not_found",
+          message: "Could not retrieve contact from MiniPay. Please type phone number or enter address manually."
+        });
         showToast("Failed to retrieve contact from MiniPay", "error");
       } finally {
         setIsResolvingPhone(false);
