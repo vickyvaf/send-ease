@@ -131,8 +131,26 @@ export default function Home() {
             });
           }
         }
+        // Merge with local activities from localStorage
+        const savedActivities = localStorage.getItem("sendease_recent_activities");
+        let localActivities: any[] = [];
+        if (savedActivities) {
+          try {
+            localActivities = JSON.parse(savedActivities);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        const formattedLocal = localActivities.map((la: any) => ({
+          scheduleId: 0,
+          recipient: la.recipient,
+          amount: la.amount,
+          timestamp: la.timestamp,
+          txHash: la.txHash,
+        }));
+
         // Show newest logs first
-        setHistoryLogs(parsedLogs.reverse());
+        setHistoryLogs([...formattedLocal, ...parsedLogs.reverse()]);
       } catch (errEvent) {
         console.error("Failed to query event logs", errEvent);
       }
@@ -145,7 +163,26 @@ export default function Home() {
       );
       if (isContractNotDeployed) {
         console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
+        
+        // Even if contract is not deployed, load local activities
+        const savedActivities = localStorage.getItem("sendease_recent_activities");
+        let localActivities: any[] = [];
+        if (savedActivities) {
+          try {
+            localActivities = JSON.parse(savedActivities);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        const formattedLocal = localActivities.map((la: any) => ({
+          scheduleId: 0,
+          recipient: la.recipient,
+          amount: la.amount,
+          timestamp: la.timestamp,
+          txHash: la.txHash,
+        }));
         setSchedules([]);
+        setHistoryLogs(formattedLocal);
       } else {
         console.error("Failed to load dashboard data", e);
         showToast("Failed to load on-chain remittance data", "error");
@@ -193,7 +230,7 @@ export default function Home() {
       <UserBalance />
 
       {/* Swap/Convert Widget */}
-      <SwapWidget />
+      <SwapWidget onTransferSuccess={fetchData} />
 
       {/* Quick Action Button */}
       {isConnected && (

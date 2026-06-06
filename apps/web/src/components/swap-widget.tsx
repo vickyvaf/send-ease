@@ -45,7 +45,7 @@ interface ContactItem {
 
 
 
-export function SwapWidget() {
+export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => void }) {
   const { showToast } = useToast();
   const { address, isConnected, chain } = useAccount();
   const publicClient = usePublicClient();
@@ -388,6 +388,30 @@ export function SwapWidget() {
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
       showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${destinationDesc}!`, "success");
+
+      // Save to recent activities in localstorage
+      const localActivity = {
+        recipient: fullPhoneNumber,
+        amount: parseFloat(sellAmount),
+        timestamp: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        }),
+        txHash: txHash,
+        tokenSymbol: sellToken,
+      };
+
+      const savedActivities = localStorage.getItem("sendease_recent_activities");
+      let activitiesList: any[] = [];
+      if (savedActivities) {
+        try {
+          activitiesList = JSON.parse(savedActivities);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      activitiesList.unshift(localActivity);
+      localStorage.setItem("sendease_recent_activities", JSON.stringify(activitiesList.slice(0, 20)));
       
       // Save contact to history
       const savedContacts = localStorage.getItem("sendease_contact_history");
@@ -419,6 +443,10 @@ export function SwapWidget() {
       setPhoneNumber("");
       setResolvedAddress("");
       setPhoneResolutionStatus(null);
+      
+      if (onTransferSuccess) {
+        onTransferSuccess();
+      }
     } catch (e: any) {
       console.error(e);
       showToast(e.message || "Transfer failed. Please try again.", "error");
@@ -716,7 +744,7 @@ export function SwapWidget() {
                   : "mt-3 origin-top slide-in-from-top-2"
                   }`}>
                   <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 tracking-wider">
-                    RECENT CONTACTS
+                    Recent contacts
                   </div>
                   <div className="overflow-y-auto flex-1 mt-1">
                     {contactHistory.map((c, idx) => {
