@@ -199,10 +199,45 @@ export default function CreateRemittance() {
   const [hasMonthlyLimit, setHasMonthlyLimit] = useState(false);
   const [maxMonthlyInput, setMaxMonthlyInput] = useState("");
 
-  // Default start date to today
+  // Load previous state from localStorage if returning from review page, otherwise default start date to today
   useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    setStartDate(today);
+    const saved = localStorage.getItem("sendease_pending_remittance");
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.recipientName) setRecipientName(data.recipientName);
+        if (data.recipientAddress) setRecipientAddress(data.recipientAddress);
+        if (data.recipientPhone) {
+          // If phone has country prefix, extract it
+          const phoneVal = data.recipientPhone;
+          const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
+          if (matchedCountry) {
+            setSelectedPrefix(matchedCountry.code);
+            setRecipientPhone(phoneVal.slice(matchedCountry.code.length));
+          } else {
+            setRecipientPhone(phoneVal);
+          }
+          // Set status to success since address is already resolved
+          if (data.recipientAddress) {
+            const shortAddr = `${data.recipientAddress.slice(0, 6)}...${data.recipientAddress.slice(-4)}`;
+            setPhoneResolutionStatus({
+              type: "success",
+              message: `Address found: ${shortAddr}`
+            });
+          }
+        }
+        if (data.amount) setAmountInput(data.amount.toString());
+        if (data.frequency) setFrequency(data.frequency);
+        if (data.startDate) setStartDate(data.startDate);
+        if (data.hasMonthlyLimit !== undefined) setHasMonthlyLimit(data.hasMonthlyLimit);
+        if (data.maxMonthlyAmount) setMaxMonthlyInput(data.maxMonthlyAmount.toString());
+      } catch (e) {
+        console.error("Failed to parse saved pending remittance", e);
+      }
+    } else {
+      const today = new Date().toISOString().split("T")[0];
+      setStartDate(today);
+    }
   }, []);
 
   // Close dropdown on outside click
@@ -381,11 +416,14 @@ export default function CreateRemittance() {
     const amountUsd = amountVal;
     const maxMonthlyUsd = hasMonthlyLimit ? maxMonthlyVal : 0;
 
+    // Combine country prefix with phone number for full reference
+    const fullPhone = recipientPhone.trim() ? `${selectedPrefix}${recipientPhone.trim()}` : "";
+
     // 3. Save pending remittance details
     const pendingData = {
       recipientName,
       recipientAddress,
-      recipientPhone,
+      recipientPhone: fullPhone,
       amount: amountUsd,
       displayAmount: amountVal,
       displayMaxMonthly: maxMonthlyVal,
