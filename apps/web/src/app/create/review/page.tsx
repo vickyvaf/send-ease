@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/navigation";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
-import { parseUnits, type Hex } from "viem";
+import { parseUnits, formatUnits, type Hex } from "viem";
 import { ShieldCheck, User, Calendar, DollarSign, Activity, Settings, AlertCircle, ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/context/toast-context";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
 import { truncateAddress, formatAmount } from "@/lib/app-utils";
+import { countries } from "@/constants/countries";
 
 const ERC20_ABI = [
   {
@@ -33,6 +34,13 @@ const ERC20_ABI = [
     stateMutability: "nonpayable",
     type: "function",
   },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 export default function ReviewApprove() {
@@ -45,12 +53,37 @@ export default function ReviewApprove() {
   const [pending, setPending] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<"approve" | "create" | "done">("approve");
+  const [selectedTokens, setSelectedTokens] = useState<string[]>(["USDC", "USDT", "USDm"]);
+  const [tokenBalances, setTokenBalances] = useState<Record<string, number>>({});
 
   const chainId = chain?.id || 42220;
   const contractAddress = REMITTANCE_ADDRESSES[chainId as keyof typeof REMITTANCE_ADDRESSES] || REMITTANCE_ADDRESSES[42220];
   
   const tokens = getStablecoinTokens(chainId);
   const usdmToken = tokens.find((t) => t.symbol === "USDm") || tokens[1];
+
+  useEffect(() => {
+    async function fetchBalances() {
+      if (!isConnected || !address || !publicClient) return;
+      const tempBalances: Record<string, number> = {};
+      for (const token of tokens) {
+        try {
+          const raw = await publicClient.readContract({
+            address: token.address,
+            abi: ERC20_ABI,
+            functionName: "balanceOf",
+            args: [address],
+          });
+          tempBalances[token.symbol] = parseFloat(formatUnits(raw as bigint, token.decimals));
+        } catch (e) {
+          console.error(`Failed to fetch balance for ${token.symbol}`, e);
+          tempBalances[token.symbol] = 0;
+        }
+      }
+      setTokenBalances(tempBalances);
+    }
+    fetchBalances();
+  }, [isConnected, address, publicClient, tokens]);
 
   useEffect(() => {
     const saved = localStorage.getItem("sendease_pending_remittance");
@@ -74,32 +107,37 @@ export default function ReviewApprove() {
 
     setLoading(true);
     try {
-      const amountWei = parseUnits(pending.amount.toString(), usdmToken.decimals);
-      
-      // 1. Check Allowance
-      showToast("Checking token allowance...", "success");
-      const currentAllowance = await publicClient.readContract({
-        address: usdmToken.address,
-        abi: ERC20_ABI,
-        functionName: "allowance",
-        args: [address, contractAddress],
-      });
+      // 1. Check Allowance and Approve for each selected token
+      for (const symbol of selectedTokens) {
+        const token = tokens.find((t) => t.symbol === symbol);
+        if (!token) continue;
 
-      if (currentAllowance < amountWei) {
+        const amountWei = parseUnits(pending.amount.toString(), token.decimals);
         setStep("approve");
-        showToast("Approving USDm stablecoin for scheduler...", "success");
+        showToast(`Checking token allowance for ${symbol}...`, "success");
         
-        // Approve Max to avoid repeated allowance prompts
-        const maxVal = parseUnits("100000000", usdmToken.decimals);
-        const approveHash = await walletClient.writeContract({
-          address: usdmToken.address,
+        const currentAllowance = await publicClient.readContract({
+          address: token.address,
           abi: ERC20_ABI,
-          functionName: "approve",
-          args: [contractAddress, maxVal],
+          functionName: "allowance",
+          args: [address, contractAddress],
         });
 
-        await publicClient.waitForTransactionReceipt({ hash: approveHash });
-        showToast("Allowance approved successfully!", "success");
+        if (currentAllowance < amountWei) {
+          showToast(`Approving ${symbol} stablecoin for scheduler...`, "success");
+          
+          // Approve Max to avoid repeated allowance prompts
+          const maxVal = parseUnits("100000000", token.decimals);
+          const approveHash = await walletClient.writeContract({
+            address: token.address,
+            abi: ERC20_ABI,
+            functionName: "approve",
+            args: [contractAddress, maxVal],
+          });
+
+          await publicClient.waitForTransactionReceipt({ hash: approveHash });
+          showToast(`${symbol} allowance approved successfully!`, "success");
+        }
       }
 
       // 2. Create Schedule
@@ -111,6 +149,7 @@ export default function ReviewApprove() {
       const limitAmountWei = pending.hasMonthlyLimit 
         ? parseUnits(pending.maxMonthlyAmount.toString(), usdmToken.decimals)
         : 0n;
+      const amountWei = parseUnits(pending.amount.toString(), usdmToken.decimals);
 
       const createHash = await walletClient.writeContract({
         address: contractAddress,
@@ -133,6 +172,46 @@ export default function ReviewApprove() {
       
       showToast("Remittance scheduled successfully!", "success");
       setStep("done");
+
+      // Save contact to history in localStorage
+      try {
+        const rawPhone = (pending.recipientPhone || "").trim();
+        let prefix = "+62";
+        let phoneNumber = rawPhone;
+        
+        const matched = countries.find(c => rawPhone.startsWith(c.code));
+        if (matched) {
+          prefix = matched.code;
+          phoneNumber = rawPhone.slice(matched.code.length);
+        }
+        
+        const cleanPhone = phoneNumber.replace(/[^\d]/g, "");
+
+        const savedContacts = localStorage.getItem("sendease_contact_history");
+        let currentHistory: any[] = [];
+        if (savedContacts) {
+          currentHistory = JSON.parse(savedContacts);
+        }
+
+        const filtered = currentHistory.filter(
+          (c: any) => !(c.phoneNumber === cleanPhone && c.prefix === prefix)
+        );
+
+        const newHistory = [
+          {
+            name: pending.recipientName,
+            phoneNumber: cleanPhone,
+            prefix: prefix,
+            address: pending.recipientAddress,
+          },
+          ...filtered,
+        ].slice(0, 10);
+        
+        localStorage.setItem("sendease_contact_history", JSON.stringify(newHistory));
+      } catch (err) {
+        console.error("Failed to save contact to history", err);
+      }
+
       localStorage.removeItem("sendease_pending_remittance");
       router.push("/");
     } catch (e: any) {
@@ -220,6 +299,44 @@ export default function ReviewApprove() {
           )}
         </CardContent>
       </Card>
+
+      {/* Select Payment Coins */}
+      <div className="space-y-2.5">
+        <label className="text-xs font-bold text-muted-foreground tracking-wider uppercase">Select Payment Coins</label>
+        <div className="flex flex-wrap gap-2">
+          {tokens.map((token) => {
+            const isSelected = selectedTokens.includes(token.symbol);
+            const balance = tokenBalances[token.symbol] ?? 0;
+            return (
+              <button
+                key={token.symbol}
+                type="button"
+                onClick={() => {
+                  if (isSelected) {
+                    if (selectedTokens.length > 1) {
+                      setSelectedTokens(selectedTokens.filter((t) => t !== token.symbol));
+                    }
+                  } else {
+                    setSelectedTokens([...selectedTokens, token.symbol]);
+                  }
+                }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold ${
+                  isSelected
+                    ? "bg-primary/10 border-primary text-primary shadow-xs"
+                    : "bg-white border-border text-muted-foreground hover:bg-slate-50"
+                }`}
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: token.accent }}
+                />
+                <span>{token.symbol}</span>
+                <span className="text-[10px] text-slate-400 font-semibold">(${formatAmount(balance)})</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Safety Notice */}
       <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 flex gap-3 text-xs text-emerald-800">

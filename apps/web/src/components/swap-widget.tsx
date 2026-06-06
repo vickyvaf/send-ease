@@ -41,6 +41,7 @@ interface ContactItem {
   phoneNumber: string;
   prefix: string;
   address?: string;
+  name?: string;
 }
 
 
@@ -423,21 +424,25 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
           console.error(e);
         }
       }
-      const exists = currentHistory.some(
+      const existingContact = currentHistory.find(
         (c) => c.phoneNumber === cleanedNumber && c.prefix === selectedPrefix
       );
-      if (!exists) {
-        const newHistory = [
-          {
-            phoneNumber: cleanedNumber,
-            prefix: selectedPrefix,
-            address: resolvedAddress,
-          },
-          ...currentHistory,
-        ].slice(0, 10);
-        localStorage.setItem("sendease_contact_history", JSON.stringify(newHistory));
-        setContactHistory(newHistory);
-      }
+      
+      const filtered = currentHistory.filter(
+        (c) => !(c.phoneNumber === cleanedNumber && c.prefix === selectedPrefix)
+      );
+
+      const newHistory = [
+        {
+          name: existingContact?.name,
+          phoneNumber: cleanedNumber,
+          prefix: selectedPrefix,
+          address: resolvedAddress,
+        },
+        ...filtered,
+      ].slice(0, 10);
+      localStorage.setItem("sendease_contact_history", JSON.stringify(newHistory));
+      setContactHistory(newHistory);
 
       setSellAmount("");
       setPhoneNumber("");
@@ -756,7 +761,12 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
                           onClick={() => handleSelectContact(c)}
                           className="flex flex-col w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
                         >
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                          {c.name && (
+                            <span className="text-xs font-bold text-slate-800 mb-0.5">
+                              {c.name}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
                             <span>{country?.flag || "🏳️"}</span>
                             <span>{c.prefix} {c.phoneNumber}</span>
                           </div>
