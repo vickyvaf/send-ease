@@ -603,7 +603,7 @@ export default function CreateRemittance() {
 
         <button
           onClick={handleReview}
-          className="w-full bg-[#09955F] text-white hover:bg-[#07824F] font-bold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
+          className="w-full bg-[#09955F] text-white hover:bg-[#07824F] font-bold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4"
         >
           <span>Review & Approve</span>
           <ArrowRight size={16} />

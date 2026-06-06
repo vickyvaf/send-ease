@@ -233,7 +233,7 @@ export default function ReviewApprove() {
         <button
           onClick={checkAllowanceAndSign}
           disabled={loading}
-          className="w-full bg-[#09955F] text-white hover:bg-[#07824F] font-bold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full bg-[#09955F] text-white hover:bg-[#07824F] font-bold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           {loading ? (
             <span>{step === "approve" ? "Approving Stablecoin..." : "Creating Schedule..."}</span>
@@ -244,7 +244,7 @@ export default function ReviewApprove() {
         <button
           onClick={() => router.back()}
           disabled={loading}
-          className="w-full bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-3.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="w-full bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
           Modify Details
         </button>

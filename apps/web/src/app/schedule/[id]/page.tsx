@@ -466,7 +466,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           <button
             onClick={handleTogglePause}
             disabled={signingAction}
-            className="flex-1 bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-3.5 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
           >
             {schedule.status === 1 ? (
               <>
@@ -483,7 +483,7 @@ export default function ScheduleDetail({ params }: PageProps) {
           <button
             onClick={handleCancel}
             disabled={signingAction}
-            className="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-3.5 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
+            className="flex-1 bg-white border border-red-200 text-red-600 hover:bg-red-50 font-bold py-2.5 rounded-xl text-xs active:scale-[0.98] transition-transform flex items-center justify-center gap-1.5"
           >
             <Trash2 size={14} />
             Cancel Schedule
