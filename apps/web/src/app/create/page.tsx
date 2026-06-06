@@ -63,15 +63,70 @@ export default function CreateRemittance() {
   };
 
   const handlePhoneLookup = async (phone: string) => {
-    // If phone is empty, it means we clicked "Pick from Contacts" in MiniPay
+    // If phone is empty, it means we clicked "Pick from Contacts"
     if (!phone) {
+      setIsResolvingPhone(true);
+      setPhoneResolutionStatus({ type: "idle", message: "" });
+
+      // 1. Try standard Web Contact Picker API first to trigger native permission prompt under direct user gesture
+      if (typeof navigator !== "undefined" && 'contacts' in navigator) {
+        try {
+          const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
+          if (contacts && contacts.length > 0) {
+            const contact = contacts[0];
+            const name = contact.name?.[0] || "";
+            const rawPhone = contact.tel?.[0] || "";
+            if (name) setRecipientName(name);
+
+            if (rawPhone) {
+              const cleanedPhone = rawPhone.trim().replace(/[^\d+]/g, "");
+              setPhoneResolutionStatus({ type: "idle", message: "Resolving contact address..." });
+              
+              const res = await fetch("/api/agent/lookup", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phoneNumber: cleanedPhone }),
+              });
+              const data = await res.json();
+              if (res.ok && data.success && data.walletAddress) {
+                setRecipientAddress(data.walletAddress);
+                const shortAddr = `${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`;
+                setPhoneResolutionStatus({
+                  type: "success",
+                  message: `Address found: ${shortAddr}`
+                });
+                
+                const matchedCountry = countries.find(c => cleanedPhone.startsWith(c.code));
+                if (matchedCountry) {
+                  setSelectedPrefix(matchedCountry.code);
+                  setRecipientPhone(cleanedPhone.slice(matchedCountry.code.length));
+                } else {
+                  setRecipientPhone(cleanedPhone);
+                }
+                showToast("Address resolved from contact!", "success");
+                setIsResolvingPhone(false);
+                return;
+              } else {
+                setPhoneResolutionStatus({
+                  type: "not_found",
+                  message: `Contact selected, but no wallet registered for ${cleanedPhone}.`
+                });
+              }
+            }
+          }
+          setIsResolvingPhone(false);
+          return;
+        } catch (webContactErr) {
+          console.warn("Web Contact Picker failed, trying RPC fallback:", webContactErr);
+        }
+      }
+
+      // 2. Fallback to MiniPay RPC method
       if (typeof window !== "undefined") {
         const ethereum = (window as any).ethereum;
         
         // Check if we can invoke the RPC call
         if (ethereum) {
-          setIsResolvingPhone(true);
-          setPhoneResolutionStatus({ type: "idle", message: "" });
           try {
             // MiniPay standard contact method request
             const contact = await ethereum.request({
@@ -183,9 +238,9 @@ export default function CreateRemittance() {
 
               setPhoneResolutionStatus({
                 type: "not_found",
-                message: "Could not open contacts. Please ensure Opera Mini / MiniPay has 'Contacts' permission enabled in your phone's App Settings, or enter the address manually below."
+                message: "Could not open contacts list. Please type the phone number or enter the address manually below."
               });
-              showToast("Contacts permission might be disabled in phone settings.", "error");
+              showToast("Could not open contacts. Please fill manually.", "error");
               setIsResolvingPhone(false);
               setShowManualAddress(true);
               return;
