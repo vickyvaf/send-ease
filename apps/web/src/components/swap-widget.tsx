@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { ArrowUpDown, ChevronDown, Send, Search, Copy, Check, X, Loader2 } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Send, Search, Copy, Check, X, Loader2, History } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { formatUnits, isAddress, parseUnits } from "viem";
@@ -37,6 +37,12 @@ const tokenIcons = {
   USDT: usdtIcon,
 };
 
+interface ContactItem {
+  phoneNumber: string;
+  prefix: string;
+  address?: string;
+}
+
 
 
 export function SwapWidget() {
@@ -55,6 +61,9 @@ export function SwapWidget() {
   const [countrySearch, setCountrySearch] = useState("");
   const [dropdownPosition, setDropdownPosition] = useState<"top" | "bottom">("bottom");
 
+  const [contactHistory, setContactHistory] = useState<ContactItem[]>([]);
+  const [showHistoryDropdown, setShowHistoryDropdown] = useState(false);
+
   const [isResolvingPhone, setIsResolvingPhone] = useState(false);
   const [resolvedAddress, setResolvedAddress] = useState<string>("");
   const [phoneResolutionStatus, setPhoneResolutionStatus] = useState<{
@@ -68,13 +77,23 @@ export function SwapWidget() {
   const [rotation, setRotation] = useState(0);
   const [copied, setCopied] = useState(false);
 
-
-
-
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
+  const historyDropdownRef = useRef<HTMLDivElement>(null);
   const hasInitializedRef = useRef(false);
+
+  // Load contact history on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("sendease_contact_history");
+    if (saved) {
+      try {
+        setContactHistory(JSON.parse(saved));
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }, []);
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -87,6 +106,9 @@ export function SwapWidget() {
       }
       if (phoneDropdownRef.current && !phoneDropdownRef.current.contains(event.target as Node)) {
         setShowPhoneDropdown(false);
+      }
+      if (historyDropdownRef.current && !historyDropdownRef.current.contains(event.target as Node)) {
+        setShowHistoryDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -280,6 +302,23 @@ export function SwapWidget() {
     return () => clearTimeout(delayDebounceFn);
   }, [phoneNumber, selectedPrefix]);
 
+  const handleSelectContact = (contact: ContactItem) => {
+    setSelectedPrefix(contact.prefix);
+    setPhoneNumber(contact.phoneNumber);
+    if (contact.address) {
+      setResolvedAddress(contact.address);
+      setPhoneResolutionStatus({
+        type: "success",
+        message: `Wallet found: ${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`,
+      });
+    } else {
+      setResolvedAddress("");
+      setPhoneResolutionStatus(null);
+      resolvePhoneAddress(`${contact.prefix}${contact.phoneNumber}`);
+    }
+    setShowHistoryDropdown(false);
+  };
+
   const handlePhoneLookup = async () => {
     let cleanedNumber = phoneNumber.trim().replace(/[^\d]/g, "");
     if (cleanedNumber.startsWith("0")) {
@@ -349,6 +388,33 @@ export function SwapWidget() {
       await publicClient.waitForTransactionReceipt({ hash: txHash });
 
       showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${destinationDesc}!`, "success");
+      
+      // Save contact to history
+      const savedContacts = localStorage.getItem("sendease_contact_history");
+      let currentHistory: ContactItem[] = [];
+      if (savedContacts) {
+        try {
+          currentHistory = JSON.parse(savedContacts);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      const exists = currentHistory.some(
+        (c) => c.phoneNumber === cleanedNumber && c.prefix === selectedPrefix
+      );
+      if (!exists) {
+        const newHistory = [
+          {
+            phoneNumber: cleanedNumber,
+            prefix: selectedPrefix,
+            address: resolvedAddress,
+          },
+          ...currentHistory,
+        ].slice(0, 10);
+        localStorage.setItem("sendease_contact_history", JSON.stringify(newHistory));
+        setContactHistory(newHistory);
+      }
+
       setSellAmount("");
       setPhoneNumber("");
       setResolvedAddress("");
@@ -630,6 +696,54 @@ export function SwapWidget() {
                 <Search className="w-4 h-4" />
               </button>
             )
+          )}
+
+          {/* Contact History Dropdown */}
+          {contactHistory.length > 0 && (
+            <div className="relative shrink-0" ref={historyDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setShowHistoryDropdown(!showHistoryDropdown)}
+                className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-[#09955F] transition-all shrink-0"
+                title="Contact History"
+              >
+                <History className="w-4.5 h-4.5" />
+              </button>
+
+              {showHistoryDropdown && (
+                <div className={`absolute right-0 w-64 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-30 animate-in fade-in duration-150 flex flex-col max-h-60 ${dropdownPosition === "top"
+                  ? "bottom-full mb-2 origin-bottom slide-in-from-bottom-2"
+                  : "mt-3 origin-top slide-in-from-top-2"
+                  }`}>
+                  <div className="px-3 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 tracking-wider">
+                    RECENT CONTACTS
+                  </div>
+                  <div className="overflow-y-auto flex-1 mt-1">
+                    {contactHistory.map((c, idx) => {
+                      const country = countries.find((co) => co.code === c.prefix);
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSelectContact(c)}
+                          className="flex flex-col w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-none"
+                        >
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                            <span>{country?.flag || "🏳️"}</span>
+                            <span>{c.prefix} {c.phoneNumber}</span>
+                          </div>
+                          {c.address && (
+                            <span className="text-[10px] font-mono text-slate-400 truncate mt-0.5 w-full">
+                              {c.address}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
