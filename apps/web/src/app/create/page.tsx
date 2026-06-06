@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX } from "lucide-react";
+import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX, ChevronDown } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +23,8 @@ export default function CreateRemittance() {
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
   const [recipientPhone, setRecipientPhone] = useState("");
+  const [showFrequencyDropdown, setShowFrequencyDropdown] = useState(false);
+  const frequencyDropdownRef = useRef<HTMLDivElement>(null);
 
   // ODIS Phone Lookup State
   const [isResolvingPhone, setIsResolvingPhone] = useState(false);
@@ -183,6 +185,19 @@ export default function CreateRemittance() {
   useEffect(() => {
     const today = new Date().toISOString().split("T")[0];
     setStartDate(today);
+  }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (frequencyDropdownRef.current && !frequencyDropdownRef.current.contains(event.target as Node)) {
+        setShowFrequencyDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, []);
 
   const handlePromptSubmit = async () => {
@@ -482,9 +497,16 @@ export default function CreateRemittance() {
               <Input
                 id="amount"
                 type="number"
+                min="0"
+                step="any"
                 placeholder="e.g. 50"
                 value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || parseFloat(val) >= 0) {
+                    setAmountInput(val);
+                  }
+                }}
                 className="rounded-xl border-border focus-visible:ring-[#09955F]"
               />
             </div>
@@ -492,16 +514,36 @@ export default function CreateRemittance() {
               <Label htmlFor="frequency" className="text-xs font-bold text-foreground">
                 Frequency
               </Label>
-              <select
-                id="frequency"
-                value={frequency}
-                onChange={(e: any) => setFrequency(e.target.value)}
-                className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus:border-[#09955F]"
-              >
-                <option value="One-time">One-time</option>
-                <option value="Weekly">Weekly</option>
-                <option value="Monthly">Monthly</option>
-              </select>
+              <div className="relative w-full" ref={frequencyDropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setShowFrequencyDropdown(!showFrequencyDropdown)}
+                  className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-[#09955F]"
+                >
+                  <span className="font-medium text-slate-800">{frequency}</span>
+                  <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                </button>
+
+                {showFrequencyDropdown && (
+                  <div className="absolute right-0 left-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg py-1.5 z-20 animate-in fade-in slide-in-from-top-2 duration-150">
+                    {(["One-time", "Weekly", "Monthly"] as const).map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        onClick={() => {
+                          setFrequency(option);
+                          setShowFrequencyDropdown(false);
+                        }}
+                        className={`flex items-center w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors ${
+                          frequency === option ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
+                        }`}
+                      >
+                        <span className="text-sm">{option}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -543,9 +585,16 @@ export default function CreateRemittance() {
               <Input
                 id="maxMonthlyAmount"
                 type="number"
+                min="0"
+                step="any"
                 placeholder="e.g. 200"
                 value={maxMonthlyInput}
-                onChange={(e) => setMaxMonthlyInput(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "" || parseFloat(val) >= 0) {
+                    setMaxMonthlyInput(val);
+                  }
+                }}
                 className="rounded-xl border-border focus-visible:ring-[#09955F]"
               />
             </div>
