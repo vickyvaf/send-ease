@@ -712,7 +712,7 @@ export default function CreateRemittance() {
             </Label>
 
             {/* MiniPay: show Contacts picker button as primary CTA */}
-            {typeof window !== "undefined" && (window as any).ethereum?.isMiniPay ? (
+            {typeof window !== "undefined" && (window as any).ethereum?.isMiniPay && !showManualAddress ? (
               <button
                 type="button"
                 id="pickContact"
