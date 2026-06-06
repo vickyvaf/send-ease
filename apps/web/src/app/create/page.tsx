@@ -234,16 +234,19 @@ export default function CreateRemittance() {
       } else if (res.ok && data.success && !data.walletAddress) {
         setPhoneResolutionStatus({
           type: "not_found",
-          message: "This person doesn't seem to have a MiniPay wallet yet."
+          message: data.warning || "This person doesn't seem to have a MiniPay wallet yet."
         });
       } else {
-        throw new Error(data.error || "Lookup failed");
+        setPhoneResolutionStatus({
+          type: "not_found",
+          message: data.error || "Lookup failed. Please check the phone number or type address manually."
+        });
       }
     } catch (err: any) {
       console.error("Lookup error:", err);
       setPhoneResolutionStatus({
         type: "not_found",
-        message: "This person doesn't seem to have a MiniPay wallet yet."
+        message: err.message || "Network error. Please try again or enter address manually."
       });
     } finally {
       setIsResolvingPhone(false);
@@ -289,11 +292,20 @@ export default function CreateRemittance() {
         } else if (res.ok && data.success && !data.walletAddress) {
           setPhoneResolutionStatus({
             type: "not_found",
-            message: "This person doesn't seem to have a MiniPay wallet yet."
+            message: data.warning || "This person doesn't seem to have a MiniPay wallet yet."
+          });
+        } else {
+          setPhoneResolutionStatus({
+            type: "not_found",
+            message: data.error || "Lookup failed. Please verify the phone number."
           });
         }
       } catch (err: any) {
         console.error("Lookup error:", err);
+        setPhoneResolutionStatus({
+          type: "not_found",
+          message: err.message || "Lookup failed. Network error."
+        });
       } finally {
         setIsResolvingPhone(false);
       }
