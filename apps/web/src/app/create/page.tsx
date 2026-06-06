@@ -112,14 +112,17 @@ export default function CreateRemittance() {
             const errStr = typeof err === "string" ? err : err?.message || err?.details || "";
             const errCode = err?.code;
 
-            // Check if user cancelled
-            const isUserRejected = errCode === 4001 || errStr.toLowerCase().includes("user rejected");
+            // Check if user cancelled or dismissed the contact picker (Required value was null is thrown by Kotlin when native picker is closed/cancelled)
+            const isUserRejected = errCode === 4001 || 
+                                   errStr.toLowerCase().includes("user rejected") ||
+                                   errStr.toLowerCase().includes("required value was null");
             if (isUserRejected) {
               setPhoneResolutionStatus({
                 type: "idle",
                 message: ""
               });
               setIsResolvingPhone(false);
+              setShowManualAddress(true);
               return;
             }
 
