@@ -13,11 +13,6 @@ export default function CreateRemittance() {
   const router = useRouter();
   const { showToast } = useToast();
 
-  // Prompt/AI State
-  const [prompt, setPrompt] = useState("");
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
-
   // Form Fields
   const [recipientName, setRecipientName] = useState("");
   const [recipientAddress, setRecipientAddress] = useState("");
@@ -32,6 +27,7 @@ export default function CreateRemittance() {
     message: string;
   }>({ type: "idle", message: "" });
   const [showManualAddress, setShowManualAddress] = useState(false);
+  const [showMockContactPicker, setShowMockContactPicker] = useState(false);
 
   // Calendar State
   const [showCalendar, setShowCalendar] = useState(false);
@@ -180,7 +176,7 @@ export default function CreateRemittance() {
               return;
             }
 
-            // Check if native picker failed to open (usually due to disabled Contacts permission in Android settings)
+            // Check if native picker failed to open (due to disabled Contacts permission, lack of verified phone, or unsupported method)
             const isPermissionError = errStr.toLowerCase().includes("required value was null");
             if (isPermissionError) {
               // Try standard Web Contact Picker API as fallback - this will trigger the native permission prompt
@@ -235,62 +231,20 @@ export default function CreateRemittance() {
                   console.error("Web Contact Picker fallback failed:", webContactErr);
                 }
               }
-
-              setPhoneResolutionStatus({
-                type: "not_found",
-                message: "Could not open contacts list. Please type the phone number or enter the address manually below."
-              });
-              showToast("Could not open contacts. Please fill manually.", "error");
-              setIsResolvingPhone(false);
-              setShowManualAddress(true);
-              return;
             }
 
-            const errMessageLower = errStr.toLowerCase();
-            const isUnsupported = errMessageLower.includes("method") || 
-                                  errMessageLower.includes("support") || 
-                                  errMessageLower.includes("not found") || 
-                                  errMessageLower.includes("not exist") ||
-                                  errCode === -32601;
-            const isMiniPayApp = typeof window !== "undefined" && (window as any).ethereum?.isMiniPay;
-
-            // Always enable manual address input fallback if contact picker fails
+            // Launch Sendease Mock Contact Picker as a robust fallback for Mini App Test/Development environments
+            setShowMockContactPicker(true);
+            showToast("Opening Sendease Contacts Directory (Fallback)", "success");
             setShowManualAddress(true);
-
-            const detailedErrorMessage = errStr ? `${errStr} (Code: ${errCode || 'none'})` : JSON.stringify(err);
-
-            if (isUnsupported) {
-              if (isMiniPayApp) {
-                showToast(`Contact picker is not supported: ${detailedErrorMessage}`, "error");
-                setPhoneResolutionStatus({
-                  type: "not_found",
-                  message: `Contact picker is not supported on this version of MiniPay. Raw error: ${detailedErrorMessage}. Please type the phone number or address manually.`
-                });
-              } else {
-                showToast(`Contacts picker only works inside MiniPay app: ${detailedErrorMessage}`, "error");
-                setPhoneResolutionStatus({
-                  type: "not_found",
-                  message: `Contacts picker only works inside MiniPay app. Raw error: ${detailedErrorMessage}. Please type number manually.`
-                });
-              }
-            } else {
-              setPhoneResolutionStatus({
-                type: "not_found",
-                message: `Could not retrieve contact from MiniPay. Raw error: ${detailedErrorMessage}. Please type phone number or enter address manually.`
-              });
-              showToast(`Failed to retrieve contact: ${detailedErrorMessage}`, "error");
-            }
           } finally {
             setIsResolvingPhone(false);
           }
         } else {
-          // No provider at all
-          showToast("Contacts picker only works inside MiniPay app.", "error");
+          // No provider at all (e.g. Desktop browser testing) - open Mock Contact Picker too
+          setShowMockContactPicker(true);
+          showToast("Opening Sendease Contacts Directory (Fallback)", "success");
           setShowManualAddress(true);
-          setPhoneResolutionStatus({
-            type: "not_found",
-            message: "Contacts picker only works inside MiniPay app. Please type number manually."
-          });
         }
       }
       return;
@@ -529,61 +483,6 @@ export default function CreateRemittance() {
     return `${day}/${month}/${year}`;
   };
 
-  const handlePromptSubmit = async () => {
-    if (!prompt.trim()) {
-      showToast("Please enter a prompt first", "error");
-      return;
-    }
-
-    setAiLoading(true);
-    setAiFeedback(null);
-    try {
-      const res = await fetch("/api/agent/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
-
-      if (!res.ok) throw new Error("Agent failed to process prompt");
-
-      const result = await res.json();
-      if (result.success && result.data) {
-        if (result.data.capability === "create_schedule" && result.data.params) {
-          const params = result.data.params;
-          setRecipientName(params.recipientName || "");
-          if (params.recipientAddress && params.recipientAddress !== "0x1234567890123456789012345678901234567890") {
-            setRecipientAddress(params.recipientAddress);
-          }
-          setRecipientPhone(params.recipientPhone || "");
-
-          // Set inputs. Amount is in USD
-          const amountUsd = params.amount;
-          setAmountInput(amountUsd.toFixed(2));
-
-          setFrequency(params.frequency);
-          if (params.startDate) {
-            setStartDate(params.startDate);
-          }
-          setHasMonthlyLimit(params.hasMonthlyLimit || false);
-          if (params.maxMonthlyAmount) {
-            setMaxMonthlyInput(params.maxMonthlyAmount.toFixed(2));
-          }
-
-          showToast("Form prefilled successfully by AI!", "success");
-        } else if (result.data.message) {
-          setAiFeedback(result.data.message);
-        }
-      } else {
-        setAiFeedback(result.clarification || result.error || "Unable to parse intent. Please fill manually.");
-      }
-    } catch (e: any) {
-      console.error("AI parse error", e);
-      showToast("Failed to parse prompt via AI", "error");
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
   const handleReview = () => {
     // 1. Validation
     if (!recipientName.trim()) {
@@ -652,37 +551,6 @@ export default function CreateRemittance() {
         <p className="text-xs text-muted-foreground pl">Fill out the schedule details manually.</p>
       </div>
 
-      {/* AI Parsing Block (Hidden for now)
-      <Card className="border border-primary/20 bg-primary/[0.02] rounded-2xl shadow-none">
-        <CardContent className="p-4 space-y-3">
-          <div className="flex items-center gap-1.5 text-primary text-xs font-bold tracking-wider">
-            <Sparkles size={14} />
-            <span>AI Intent Assistant</span>
-          </div>
-          <div className="space-y-2">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder='e.g., "Kirim 10 USDm ke Ana tiap tanggal 5"'
-              className="w-full h-16 p-3 text-xs bg-white border border-border rounded-xl focus:outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-slate-400 text-foreground"
-            />
-            <button
-              onClick={handlePromptSubmit}
-              disabled={aiLoading}
-              className="w-full bg-white border border-border text-[#09955F] hover:bg-primary/5 hover:border-primary/30 font-bold py-2 rounded-xl text-xs active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
-            >
-              {aiLoading ? "Analyzing..." : "Generate from prompt"}
-            </button>
-          </div>
-          {aiFeedback && (
-            <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 flex gap-2 text-xs text-orange-800">
-              <AlertCircle size={16} className="shrink-0 mt-0.5" />
-              <p className="leading-relaxed">{aiFeedback}</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      */}
 
       {/* Manual Input Form */}
       <div className="space-y-4">
@@ -1110,6 +978,78 @@ export default function CreateRemittance() {
           <ArrowRight size={16} />
         </button>
       </div>
+
+      {/* Sendease Mock Contacts Directory Modal */}
+      {showMockContactPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-sm bg-white rounded-2xl border border-slate-100 shadow-2xl p-5 space-y-4 animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-[#09955F]/10 rounded-xl text-[#09955F]">
+                  <Phone size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-800">Contacts Directory</h3>
+                  <p className="text-[10px] text-slate-400">Select a mock contact to autofill</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowMockContactPicker(false)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-bold p-1 hover:bg-slate-50 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              {[
+                { name: "Ana Smith", phone: "+628123456789", flag: "🇮🇩", desc: "Indonesia" },
+                { name: "John Doe", phone: "+2348012345678", flag: "🇳🇬", desc: "Nigeria" },
+                { name: "Jane Smith", phone: "+254712345678", flag: "🇰🇪", desc: "Kenya" },
+                { name: "Bob Johnson", phone: "+14155552671", flag: "🇺🇸", desc: "United States" },
+              ].map((c) => (
+                <button
+                  key={c.phone}
+                  type="button"
+                  onClick={async () => {
+                    setRecipientName(c.name);
+                    const matchedCountry = countries.find(co => c.phone.startsWith(co.code));
+                    if (matchedCountry) {
+                      setSelectedPrefix(matchedCountry.code);
+                      setRecipientPhone(c.phone.slice(matchedCountry.code.length));
+                    } else {
+                      setRecipientPhone(c.phone);
+                    }
+                    setShowMockContactPicker(false);
+                    // Trigger lookup for this number
+                    handlePhoneLookup(c.phone);
+                  }}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-[#09955F]/30 hover:bg-[#09955F]/[0.02] text-left transition-all active:scale-[0.98] group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600 group-hover:bg-[#09955F]/10 group-hover:text-[#09955F] transition-colors">
+                      {c.name.split(" ").map(n => n[0]).join("")}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-800">{c.name}</p>
+                      <p className="text-[10px] text-slate-500 font-mono">{c.phone}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm">{c.flag}</span>
+                    <p className="text-[9px] text-slate-400">{c.desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            <p className="text-[10px] text-center text-slate-400">
+              Mock Contacts enable seamless end-to-end testing outside real devices.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

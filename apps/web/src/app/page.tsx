@@ -263,7 +263,7 @@ export default function Home() {
           <div className="flex flex-col items-center justify-center py-10 text-center space-y-2 bg-primary/[0.02] rounded-2xl border border-dashed border-primary/20">
             <UserPlus className="h-8 w-8 text-slate-400" />
             <p className="text-xs font-bold text-foreground">No remittances scheduled yet</p>
-            <p className="text-xs text-muted-foreground">Create a scheduled payment.</p>
+            <p className="text-xs text-muted-foreground">Create a scheduled payment</p>
           </div>
         )}
       </div>
