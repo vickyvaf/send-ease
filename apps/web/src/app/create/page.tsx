@@ -119,7 +119,12 @@ export default function CreateRemittance() {
               return;
             }
 
-            const isUnsupported = err.message?.includes("method") || err.code === -32601;
+            const errMessageLower = err.message?.toLowerCase() || "";
+            const isUnsupported = errMessageLower.includes("method") || 
+                                  errMessageLower.includes("support") || 
+                                  errMessageLower.includes("not found") || 
+                                  errMessageLower.includes("not exist") ||
+                                  err.code === -32601;
             const isMiniPayApp = typeof window !== "undefined" && (window as any).ethereum?.isMiniPay;
 
             if (isUnsupported) {
