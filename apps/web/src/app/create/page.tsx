@@ -114,6 +114,7 @@ export default function CreateRemittance() {
           } finally {
             setIsResolvingPhone(false);
           }
+        } else {
           // Development / Non-MiniPay Browser Fallback
           showToast("Contacts picker only works inside MiniPay app.", "error");
           setShowManualAddress(true);
