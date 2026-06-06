@@ -264,6 +264,9 @@ export default function CreateRemittance() {
         if (data.startDate) setStartDate(data.startDate);
         if (data.hasMonthlyLimit !== undefined) setHasMonthlyLimit(data.hasMonthlyLimit);
         if (data.maxMonthlyAmount) setMaxMonthlyInput(data.maxMonthlyAmount.toString());
+
+        // Clear the draft immediately after restoring, so navigating away and returning starts fresh
+        localStorage.removeItem("sendease_pending_remittance");
       } catch (e) {
         console.error("Failed to parse saved pending remittance", e);
       }

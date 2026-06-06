@@ -95,6 +95,10 @@ export default function AIAgent() {
     }
   }, [isConnected, address, publicClient, fetchSchedulesContext]);
 
+  useEffect(() => {
+    localStorage.removeItem("sendease_pending_remittance");
+  }, []);
+
   const loadSession = (session: ChatSession) => {
     setCurrentSessionId(session.id);
     setMessages(session.messages);
