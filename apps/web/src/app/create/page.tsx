@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft } from "lucide-react";
+import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,9 +27,25 @@ export default function CreateRemittance() {
   // ODIS Phone Lookup State
   const [isResolvingPhone, setIsResolvingPhone] = useState(false);
   const [phoneResolutionStatus, setPhoneResolutionStatus] = useState<{
-    type: "success" | "error" | "idle";
+    type: "success" | "error" | "idle" | "not_found";
     message: string;
   }>({ type: "idle", message: "" });
+  const [showManualAddress, setShowManualAddress] = useState(false);
+
+  const getInviteLink = () => {
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    return `${baseUrl}?ref=invite`;
+  };
+
+  const handleCopyInvite = async () => {
+    const link = getInviteLink();
+    try {
+      await navigator.clipboard.writeText(link);
+      showToast("Invite link copied!", "success");
+    } catch {
+      showToast("Failed to copy link", "error");
+    }
+  };
 
   const handlePhoneLookup = async (phone: string) => {
     // If running in MiniPay, use the native contact picker
@@ -55,7 +71,10 @@ export default function CreateRemittance() {
           });
           showToast("Address found successfully!", "success");
         } else {
-          showToast("No contact selected", "error");
+          setPhoneResolutionStatus({
+            type: "not_found",
+            message: "No contact selected or contact has no wallet."
+          });
         }
       } catch (err: any) {
         console.error("minipay_requestContact failed:", err);
@@ -93,18 +112,17 @@ export default function CreateRemittance() {
         showToast("Address found successfully!", "success");
       } else if (res.ok && data.success && !data.walletAddress) {
         setPhoneResolutionStatus({
-          type: "error",
-          message: "Failed to find any registered wallet for this phone number."
+          type: "not_found",
+          message: "This person doesn't seem to have a MiniPay wallet yet."
         });
-        showToast("Failed to find wallet address", "error");
       } else {
         throw new Error(data.error || "Lookup failed");
       }
     } catch (err: any) {
       console.error("Lookup error:", err);
       setPhoneResolutionStatus({
-        type: "error",
-        message: "Failed to find wallet address. ODIS lookup error."
+        type: "not_found",
+        message: "This person doesn't seem to have a MiniPay wallet yet."
       });
     } finally {
       setIsResolvingPhone(false);
@@ -140,8 +158,8 @@ export default function CreateRemittance() {
           showToast("Address found successfully!", "success");
         } else if (res.ok && data.success && !data.walletAddress) {
           setPhoneResolutionStatus({
-            type: "error",
-            message: "Failed to find any registered wallet for this phone number."
+            type: "not_found",
+            message: "This person doesn't seem to have a MiniPay wallet yet."
           });
         }
       } catch (err: any) {
@@ -229,7 +247,7 @@ export default function CreateRemittance() {
       return;
     }
     if (!recipientAddress.trim() || !isValidAddress(recipientAddress)) {
-      showToast("Invalid Celo wallet address", "error");
+      showToast("Recipient wallet not resolved. Please enter a phone number or address manually.", "error");
       return;
     }
     const amountVal = parseFloat(amountInput) || 0;
@@ -339,76 +357,121 @@ export default function CreateRemittance() {
             />
           </div>
 
-          {/* Phone Number */}
+          {/* Phone Number – primary input */}
           <div className="space-y-1.5">
             <Label htmlFor="recipientPhone" className="text-xs font-bold text-foreground flex items-center gap-1">
               <Phone size={13} className="text-slate-400" />
-              Recipient Phone Number (Optional)
+              Recipient Phone Number
             </Label>
-            <div className="flex gap-2">
-              <Input
-                id="recipientPhone"
-                placeholder="e.g. +628123456789"
-                value={recipientPhone}
-                onChange={(e) => {
-                  setRecipientPhone(e.target.value);
-                  if (phoneResolutionStatus.type !== "idle") {
-                    setPhoneResolutionStatus({ type: "idle", message: "" });
-                    setRecipientAddress("");
-                  }
-                }}
-                onBlur={() => {
-                  if (recipientPhone.startsWith("+") && recipientPhone.length >= 8) {
-                    handlePhoneLookup(recipientPhone);
-                  }
-                }}
-                className="rounded-xl border-border focus-visible:ring-[#09955F] flex-1"
-              />
-              {((typeof window !== "undefined" && (window as any).ethereum?.isMiniPay) || (recipientPhone.startsWith("+") && recipientPhone.length >= 8)) && (
+
+            {/* MiniPay: show Contacts picker button as primary CTA */}
+            {typeof window !== "undefined" && (window as any).ethereum?.isMiniPay ? (
+              <button
+                type="button"
+                id="pickContact"
+                onClick={() => handlePhoneLookup("")}
+                disabled={isResolvingPhone}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[#09955F]/40 bg-[#09955F]/[0.03] text-[#09955F] hover:bg-[#09955F]/[0.07] hover:border-[#09955F]/60 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {isResolvingPhone ? (
+                  <Loader2 size={15} className="animate-spin" />
+                ) : (
+                  <Phone size={15} />
+                )}
+                {isResolvingPhone ? "Looking up..." : "Pick from Contacts"}
+              </button>
+            ) : (
+              /* Fallback: manual phone input + lookup button */
+              <div className="flex gap-2">
+                <Input
+                  id="recipientPhone"
+                  placeholder="e.g. +628123456789"
+                  value={recipientPhone}
+                  onChange={(e) => {
+                    setRecipientPhone(e.target.value);
+                    if (phoneResolutionStatus.type !== "idle") {
+                      setPhoneResolutionStatus({ type: "idle", message: "" });
+                      setRecipientAddress("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (recipientPhone.startsWith("+") && recipientPhone.length >= 8) {
+                      handlePhoneLookup(recipientPhone);
+                    }
+                  }}
+                  className="rounded-xl border-border focus-visible:ring-[#09955F] flex-1"
+                />
+                {recipientPhone.startsWith("+") && recipientPhone.length >= 8 && (
+                  <button
+                    type="button"
+                    onClick={() => handlePhoneLookup(recipientPhone)}
+                    disabled={isResolvingPhone}
+                    className="px-3 bg-white hover:bg-primary/5 text-[#09955F] disabled:opacity-50 text-xs font-bold rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-1 active:scale-[0.98]"
+                  >
+                    {isResolvingPhone ? <Loader2 size={13} className="animate-spin text-[#09955F]" /> : <Search size={13} />}
+                    Lookup
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Status feedback */}
+            {phoneResolutionStatus.type === "success" && (
+              <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
+                <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                <div className="flex-1">
+                  <p className="text-[11px] text-emerald-700 font-bold">Wallet found!</p>
+                  <p className="text-[11px] text-emerald-600 font-mono">{recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Not found → invite link */}
+            {phoneResolutionStatus.type === "not_found" && (
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-200 space-y-2">
+                <div className="flex items-start gap-2">
+                  <UserX size={14} className="shrink-0 text-amber-600 mt-0.5" />
+                  <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
+                    This person doesn&apos;t have a MiniPay wallet yet.
+                  </p>
+                </div>
                 <button
                   type="button"
-                  onClick={() => handlePhoneLookup(recipientPhone)}
-                  disabled={isResolvingPhone}
-                  className="px-3 bg-white hover:bg-primary/5 text-[#09955F] disabled:opacity-50 text-xs font-bold rounded-xl border border-border hover:border-primary/30 transition-colors flex items-center gap-1 active:scale-[0.98]"
+                  id="sendInviteLink"
+                  onClick={handleCopyInvite}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-800 font-bold text-xs transition-colors active:scale-[0.98]"
                 >
-                  {isResolvingPhone ? (
-                    <Loader2 size={13} className="animate-spin text-[#09955F]" />
-                  ) : (
-                    <Search size={13} />
-                  )}
-                  {typeof window !== "undefined" && (window as any).ethereum?.isMiniPay ? "Contacts" : "Lookup"}
+                  <Share2 size={12} />
+                  Copy Invite Link
                 </button>
-              )}
-            </div>
-            {phoneResolutionStatus.type === "success" && (
-              <p className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200">
-                <CheckCircle2 size={12} className="shrink-0" />
-                {phoneResolutionStatus.message}
-              </p>
-            )}
-            {phoneResolutionStatus.type === "error" && (
-              <p className="text-[11px] text-amber-600 flex items-center gap-1 font-medium animate-in fade-in slide-in-from-top-1 duration-200">
-                <AlertCircle size={12} className="shrink-0" />
-                {phoneResolutionStatus.message}
-              </p>
+                <button
+                  type="button"
+                  onClick={() => setShowManualAddress(true)}
+                  className="w-full text-center text-[11px] text-muted-foreground underline underline-offset-2"
+                >
+                  Enter wallet address manually instead
+                </button>
+              </div>
             )}
           </div>
 
-          {/* Wallet Address */}
-          <div className="space-y-1.5">
-            <Label htmlFor="recipientAddress" className="text-xs font-bold text-foreground flex items-center gap-1">
-              <Wallet size={13} className="text-slate-400" />
-              Recipient Wallet Address (Celo)
-            </Label>
-            <Input
-              id="recipientAddress"
-              placeholder="0x..."
-              value={recipientAddress}
-              onChange={(e) => setRecipientAddress(e.target.value)}
-              disabled={phoneResolutionStatus.type === "success"}
-              className="rounded-xl border-border font-mono text-xs focus-visible:ring-[#09955F] disabled:opacity-75 disabled:bg-primary/[0.02] disabled:cursor-not-allowed"
-            />
-          </div>
+          {/* Wallet Address – hidden by default, shown only as fallback */}
+          {(showManualAddress && phoneResolutionStatus.type !== "success") && (
+            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-300">
+              <Label htmlFor="recipientAddress" className="text-xs font-bold text-foreground flex items-center gap-1">
+                <Wallet size={13} className="text-slate-400" />
+                Wallet Address (Celo) — Fallback
+              </Label>
+              <Input
+                id="recipientAddress"
+                placeholder="0x..."
+                value={recipientAddress}
+                onChange={(e) => setRecipientAddress(e.target.value)}
+                className="rounded-xl border-border font-mono text-xs focus-visible:ring-[#09955F]"
+              />
+              <p className="text-[10px] text-muted-foreground">Enter a valid Celo wallet address if the recipient is not on MiniPay.</p>
+            </div>
+          )}
 
           {/* Amount and Frequency Row */}
           <div className="grid grid-cols-2 gap-3">
