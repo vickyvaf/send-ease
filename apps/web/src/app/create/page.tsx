@@ -1,15 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX, ChevronDown, ScanLine, Copy, Check } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { countries } from "@/constants/countries";
 import { useToast } from "@/context/toast-context";
 import { isValidAddress } from "@/lib/app-utils";
-import { countries } from "@/constants/countries";
+import { ArrowRight, Calendar, Check, CheckCircle2, ChevronDown, Copy, Loader2, Phone, Search, Share2, User, UserX, Wallet } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 export default function CreateRemittance() {
   const router = useRouter();
@@ -47,6 +45,7 @@ export default function CreateRemittance() {
   const [countrySearch, setCountrySearch] = useState("");
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
+  const isRestoredRef = useRef(false);
 
   const getInviteLink = () => {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -65,12 +64,14 @@ export default function CreateRemittance() {
 
   const handlePhoneLookup = async (phone: string) => {
     // If running in MiniPay, use the native contact picker
-    if (typeof window !== "undefined" && (window as any).ethereum?.isMiniPay) {
+    if (typeof window !== "undefined" && (window as any).ethereum) {
       setIsResolvingPhone(true);
       setPhoneResolutionStatus({ type: "idle", message: "" });
       try {
-        const contact = await (window as any).ethereum.request({
-          method: "minipay_requestContact",
+        const ethereum = (window as any).ethereum;
+        // Verify specifically for MiniPay contact selection request method support
+        const contact = await ethereum.request({
+          method: "phoneBook_selectContact"
         });
         if (contact && contact.address) {
           setRecipientAddress(contact.address);
@@ -78,7 +79,15 @@ export default function CreateRemittance() {
             setRecipientName(contact.name);
           }
           if (contact.phoneNumber) {
-            setRecipientPhone(contact.phoneNumber);
+            // If phone has country prefix, extract it
+            const phoneVal = contact.phoneNumber;
+            const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
+            if (matchedCountry) {
+              setSelectedPrefix(matchedCountry.code);
+              setRecipientPhone(phoneVal.slice(matchedCountry.code.length));
+            } else {
+              setRecipientPhone(phoneVal);
+            }
           }
           const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
           setPhoneResolutionStatus({
@@ -93,7 +102,38 @@ export default function CreateRemittance() {
           });
         }
       } catch (err: any) {
-        console.error("minipay_requestContact failed:", err);
+        console.error("phoneBook_selectContact failed, trying minipay_requestContact fallback:", err);
+        try {
+          const contact = await (window as any).ethereum.request({
+            method: "minipay_requestContact",
+          });
+          if (contact && contact.address) {
+            setRecipientAddress(contact.address);
+            if (contact.name) {
+              setRecipientName(contact.name);
+            }
+            if (contact.phoneNumber) {
+              const phoneVal = contact.phoneNumber;
+              const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
+              if (matchedCountry) {
+                setSelectedPrefix(matchedCountry.code);
+                setRecipientPhone(phoneVal.slice(matchedCountry.code.length));
+              } else {
+                setRecipientPhone(phoneVal);
+              }
+            }
+            const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
+            setPhoneResolutionStatus({
+              type: "success",
+              message: `Address found: ${shortAddr}`
+            });
+            showToast("Address found successfully!", "success");
+            setIsResolvingPhone(false);
+            return;
+          }
+        } catch (innerErr) {
+          console.error("minipay_requestContact fallback failed:", innerErr);
+        }
         showToast("Failed to retrieve contact from MiniPay", "error");
       } finally {
         setIsResolvingPhone(false);
@@ -155,6 +195,11 @@ export default function CreateRemittance() {
       return;
     }
     const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
+
+    // Skip redundant lookup if it's the already resolved address and loaded from storage
+    if (isRestoredRef.current) {
+      return;
+    }
 
     const delayDebounceFn = setTimeout(async () => {
       setIsResolvingPhone(true);
@@ -224,6 +269,8 @@ export default function CreateRemittance() {
               type: "success",
               message: `Address found: ${shortAddr}`
             });
+            // Mark as restored so debounce effect knows not to trigger initial lookup
+            isRestoredRef.current = true;
           }
         }
         if (data.amount) setAmountInput(data.amount.toString());
@@ -589,6 +636,8 @@ export default function CreateRemittance() {
                   onChange={(e) => {
                     const val = e.target.value.replace(/[^\d]/g, "");
                     setRecipientPhone(val);
+                    // Reset restored ref since user is modifying phone manually
+                    isRestoredRef.current = false;
                     if (phoneResolutionStatus.type !== "idle") {
                       setPhoneResolutionStatus({ type: "idle", message: "" });
                       setRecipientAddress("");

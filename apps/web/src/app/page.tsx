@@ -156,6 +156,9 @@ export default function Home() {
   }, [isConnected, address, publicClient, contractAddress, showToast]);
 
   useEffect(() => {
+    // Clear pending remittance draft when user leaves the creation flow and returns to dashboard
+    localStorage.removeItem("sendease_pending_remittance");
+
     if (isConnected && address && publicClient) {
       fetchData();
     } else {
