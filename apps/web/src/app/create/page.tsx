@@ -67,8 +67,9 @@ export default function CreateRemittance() {
     if (!phone) {
       if (typeof window !== "undefined") {
         const ethereum = (window as any).ethereum;
-        // Check if actually running inside MiniPay client wrapper
-        if (ethereum && ethereum.isMiniPay) {
+        
+        // Check if we can invoke the RPC call
+        if (ethereum) {
           setIsResolvingPhone(true);
           setPhoneResolutionStatus({ type: "idle", message: "" });
           try {
@@ -106,16 +107,49 @@ export default function CreateRemittance() {
             }
           } catch (err: any) {
             console.error("Failed to retrieve contact from MiniPay:", err);
-            setPhoneResolutionStatus({
-              type: "not_found",
-              message: "Could not retrieve contact from MiniPay. Please type phone number or enter address manually."
-            });
-            showToast("Failed to retrieve contact from MiniPay", "error");
+            
+            // Check if user cancelled
+            const isUserRejected = err.code === 4001 || err.message?.toLowerCase().includes("user rejected");
+            if (isUserRejected) {
+              setPhoneResolutionStatus({
+                type: "idle",
+                message: ""
+              });
+              setIsResolvingPhone(false);
+              return;
+            }
+
+            const isUnsupported = err.message?.includes("method") || err.code === -32601;
+            const isMiniPayApp = typeof window !== "undefined" && (window as any).ethereum?.isMiniPay;
+
+            if (isUnsupported) {
+              if (isMiniPayApp) {
+                showToast("Contact picker is not supported on this version of MiniPay.", "error");
+                setShowManualAddress(true);
+                setPhoneResolutionStatus({
+                  type: "not_found",
+                  message: "Contact picker is not supported on this version of MiniPay. Please type the phone number or address manually."
+                });
+              } else {
+                showToast("Contacts picker only works inside MiniPay app.", "error");
+                setShowManualAddress(true);
+                setPhoneResolutionStatus({
+                  type: "not_found",
+                  message: "Contacts picker only works inside MiniPay app. Please type number manually."
+                });
+              }
+            } else {
+              setPhoneResolutionStatus({
+                type: "not_found",
+                message: "Could not retrieve contact from MiniPay. Please type phone number or enter address manually."
+              });
+              showToast("Failed to retrieve contact from MiniPay", "error");
+            }
           } finally {
             setIsResolvingPhone(false);
           }
         } else {
-          // Development / Non-MiniPay Browser Fallback
+          // No provider at all
           showToast("Contacts picker only works inside MiniPay app.", "error");
           setShowManualAddress(true);
           setPhoneResolutionStatus({
@@ -684,7 +718,7 @@ export default function CreateRemittance() {
                 <div className="flex items-start gap-2">
                   <UserX size={14} className="shrink-0 text-amber-600 mt-0.5" />
                   <p className="text-[11px] text-amber-700 font-medium leading-relaxed">
-                    This person doesn&apos;t have a MiniPay wallet yet.
+                    {phoneResolutionStatus.message || "This person doesn't have a MiniPay wallet yet."}
                   </p>
                 </div>
                 <button
