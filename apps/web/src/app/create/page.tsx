@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX, ChevronDown, ScanLine } from "lucide-react";
+import { Sparkles, Calendar, User, Phone, Wallet, AlertCircle, ArrowRight, Loader2, Search, CheckCircle2, ChevronLeft, Share2, UserX, ChevronDown, ScanLine, Copy, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,11 +35,18 @@ export default function CreateRemittance() {
   }>({ type: "idle", message: "" });
   const [showManualAddress, setShowManualAddress] = useState(false);
 
+  // Calendar State
+  const [showCalendar, setShowCalendar] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const calendarRef = useRef<HTMLDivElement>(null);
+
   // Country Prefix Selector state
   const [selectedPrefix, setSelectedPrefix] = useState<string>("+62");
   const [showPhoneDropdown, setShowPhoneDropdown] = useState(false);
   const [countrySearch, setCountrySearch] = useState("");
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
+  const [copied, setCopied] = useState(false);
 
   const getInviteLink = () => {
     const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -207,12 +214,80 @@ export default function CreateRemittance() {
       if (phoneDropdownRef.current && !phoneDropdownRef.current.contains(event.target as Node)) {
         setShowPhoneDropdown(false);
       }
+      if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
+        setShowCalendar(false);
+      }
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  // Helper arrays & function for Custom Calendar
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  const dayNames = ["S", "M", "T", "W", "T", "F", "S"];
+
+  const getDaysInMonth = (month: number, year: number) => {
+    return new Date(year, month + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (month: number, year: number) => {
+    return new Date(year, month, 1).getDay();
+  };
+
+  const generateCalendarDays = () => {
+    const totalDays = getDaysInMonth(calendarMonth, calendarYear);
+    const firstDay = getFirstDayOfMonth(calendarMonth, calendarYear);
+    const days = [];
+
+    // Empty spaces for previous month's alignment
+    for (let i = 0; i < firstDay; i++) {
+      days.push(null);
+    }
+
+    // Days of active month
+    for (let i = 1; i <= totalDays; i++) {
+      days.push(i);
+    }
+
+    return days;
+  };
+
+  const handleDateSelect = (day: number) => {
+    // Format to YYYY-MM-DD
+    const formattedMonth = String(calendarMonth + 1).padStart(2, "0");
+    const formattedDay = String(day).padStart(2, "0");
+    setStartDate(`${calendarYear}-${formattedMonth}-${formattedDay}`);
+    setShowCalendar(false);
+  };
+
+  const navigateMonth = (direction: "prev" | "next") => {
+    if (direction === "prev") {
+      if (calendarMonth === 0) {
+        setCalendarMonth(11);
+        setCalendarYear((prev) => prev - 1);
+      } else {
+        setCalendarMonth((prev) => prev - 1);
+      }
+    } else {
+      if (calendarMonth === 11) {
+        setCalendarMonth(0);
+        setCalendarYear((prev) => prev + 1);
+      } else {
+        setCalendarMonth((prev) => prev + 1);
+      }
+    }
+  };
+
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return "";
+    const [year, month, day] = dateStr.split("-");
+    return `${day}/${month}/${year}`;
+  };
 
   const handlePromptSubmit = async () => {
     if (!prompt.trim()) {
@@ -417,7 +492,7 @@ export default function CreateRemittance() {
                   <button
                     type="button"
                     onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
-                    className="flex items-center gap-1 hover:bg-slate-50 active:scale-95 transition-all text-xs font-bold text-slate-800 pr-2 border-r border-slate-200"
+                    className="flex items-center gap-1 hover:bg-slate-50 active:scale-95 transition-all text-sm font-semibold text-slate-800 pr-2 border-r border-slate-200"
                   >
                     <span>{countries.find((c) => c.code === selectedPrefix)?.flag || "🏳️"}</span>
                     <span>{selectedPrefix}</span>
@@ -482,7 +557,7 @@ export default function CreateRemittance() {
                       setRecipientAddress("");
                     }
                   }}
-                  className="bg-transparent border-none outline-none text-xs font-semibold p-0 text-slate-900 placeholder-slate-300 w-full focus:ring-0"
+                  className="bg-transparent border-none outline-none text-sm font-normal p-0 text-slate-900 placeholder:text-muted-foreground w-full focus:ring-0 ml-1"
                 />
 
                 {isResolvingPhone ? (
@@ -504,12 +579,27 @@ export default function CreateRemittance() {
 
             {/* Status feedback */}
             {phoneResolutionStatus.type === "success" && (
-              <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
-                <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
-                <div className="flex-1">
-                  <p className="text-[11px] text-emerald-700 font-bold">Wallet found!</p>
-                  <p className="text-[11px] text-emerald-600 font-mono">{recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}</p>
+              <div className="flex items-center justify-between gap-2 p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 size={14} className="shrink-0 text-emerald-600" />
+                  <div>
+                    <p className="text-[11px] text-emerald-700 font-bold">Wallet found!</p>
+                    <p className="text-[11px] text-emerald-600 font-mono">{recipientAddress.slice(0, 10)}...{recipientAddress.slice(-6)}</p>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(recipientAddress);
+                    setCopied(true);
+                    showToast("Wallet address copied!", "success");
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="p-1.5 hover:bg-emerald-100 rounded-lg text-emerald-600 hover:text-emerald-700 transition-all shrink-0"
+                  title="Copy address"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
               </div>
             )}
 
@@ -625,26 +715,123 @@ export default function CreateRemittance() {
               <Calendar size={13} className="text-slate-400" />
               Start Date
             </Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-xl border-border focus-visible:ring-[#09955F]"
-            />
+            <div className="relative w-full" ref={calendarRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (startDate) {
+                    const [year, month] = startDate.split("-");
+                    setCalendarMonth(parseInt(month) - 1);
+                    setCalendarYear(parseInt(year));
+                  }
+                  setShowCalendar(!showCalendar);
+                }}
+                className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:border-[#09955F]"
+              >
+                <span className="font-medium text-slate-800">{formatDateDisplay(startDate)}</span>
+                <Calendar size={15} className="text-slate-400 shrink-0" />
+              </button>
+
+              {showCalendar && (
+                <div className="absolute left-0 bottom-full mb-2 bg-white border border-slate-200 rounded-xl shadow-xl p-3 z-30 animate-in fade-in slide-in-from-bottom-2 duration-150 w-72">
+                  {/* Calendar Header */}
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-sm font-bold text-slate-800">
+                      {monthNames[calendarMonth]} {calendarYear}
+                    </span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => navigateMonth("prev")}
+                        className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors text-sm font-bold"
+                      >
+                        &larr;
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigateMonth("next")}
+                        className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors text-sm font-bold"
+                      >
+                        &rarr;
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Calendar Grid Header */}
+                  <div className="grid grid-cols-7 gap-1 text-center mb-1">
+                    {dayNames.map((day, idx) => (
+                      <span key={idx} className="text-[10px] font-bold text-slate-400">
+                        {day}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Calendar Days Grid */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {generateCalendarDays().map((day, idx) => {
+                      if (day === null) {
+                        return <div key={idx} />;
+                      }
+
+                      const formattedMonth = String(calendarMonth + 1).padStart(2, "0");
+                      const formattedDay = String(day).padStart(2, "0");
+                      const itemDateStr = `${calendarYear}-${formattedMonth}-${formattedDay}`;
+                      const isSelected = startDate === itemDateStr;
+
+                      return (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleDateSelect(day)}
+                          className={`h-7 w-7 text-xs rounded-full flex items-center justify-center transition-all ${
+                            isSelected
+                              ? "bg-[#09955F] text-white font-bold"
+                              : "hover:bg-slate-100 text-slate-700"
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Clear & Today controls */}
+                  <div className="flex justify-between border-t border-slate-100 pt-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const today = new Date().toISOString().split("T")[0];
+                        setStartDate(today);
+                        setShowCalendar(false);
+                      }}
+                      className="text-xs text-[#09955F] font-bold hover:underline"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowCalendar(false)}
+                      className="text-xs text-slate-400 font-bold hover:underline"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Safety Limit Toggle */}
-          <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-primary/[0.02]">
-            <div>
+          <div className="flex items-center justify-between gap-4 p-3 border border-border rounded-xl bg-primary/[0.02]">
+            <div className="flex-1 pr-2">
               <p className="text-xs font-bold text-foreground">Enable Monthly Limit</p>
-              <p className="text-xs text-muted-foreground">Pause automatically if spending exceeds this limit</p>
+              <p className="text-xs text-muted-foreground">Automatically pause if total monthly transfers exceed this value</p>
             </div>
             <input
               type="checkbox"
               checked={hasMonthlyLimit}
               onChange={(e) => setHasMonthlyLimit(e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-[#09955F] cursor-pointer"
+              className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-[#09955F] cursor-pointer shrink-0"
             />
           </div>
 

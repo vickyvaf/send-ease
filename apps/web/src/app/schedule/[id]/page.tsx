@@ -337,8 +337,8 @@ export default function ScheduleDetail({ params }: PageProps) {
                 />
               </div>
 
-              <div className="flex items-center justify-between p-3 border border-border rounded-xl bg-primary/[0.02]">
-                <div>
+              <div className="flex items-center justify-between gap-4 p-3 border border-border rounded-xl bg-primary/[0.02]">
+                <div className="flex-1 pr-2">
                   <p className="text-xs font-bold text-foreground">Enable Monthly Limit</p>
                   <p className="text-xs text-muted-foreground">Automatically pause if total monthly transfers exceed this value</p>
                 </div>
@@ -346,7 +346,7 @@ export default function ScheduleDetail({ params }: PageProps) {
                   type="checkbox"
                   checked={editHasLimit}
                   onChange={(e) => setEditHasLimit(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-[#09955F] cursor-pointer"
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-[#09955F] cursor-pointer shrink-0"
                 />
               </div>
 
