@@ -176,72 +176,28 @@ export default function CreateRemittance() {
               return;
             }
 
-            // Check if native picker failed to open (due to disabled Contacts permission, lack of verified phone, or unsupported method)
-            const isPermissionError = errStr.toLowerCase().includes("required value was null");
-            if (isPermissionError) {
-              // Try standard Web Contact Picker API as fallback - this will trigger the native permission prompt
-              if (typeof navigator !== "undefined" && 'contacts' in navigator) {
-                try {
-                  const contacts = await (navigator as any).contacts.select(['name', 'tel'], { multiple: false });
-                  if (contacts && contacts.length > 0) {
-                    const contact = contacts[0];
-                    const name = contact.name?.[0] || "";
-                    const rawPhone = contact.tel?.[0] || "";
-                    if (name) setRecipientName(name);
+            const isMiniPayApp = typeof window !== "undefined" && (window as any).ethereum?.isMiniPay;
 
-                    if (rawPhone) {
-                      const cleanedPhone = rawPhone.trim().replace(/[^\d+]/g, "");
-                      setPhoneResolutionStatus({ type: "idle", message: "Resolving contact address..." });
-                      
-                      const res = await fetch("/api/agent/lookup", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ phoneNumber: cleanedPhone }),
-                      });
-                      const data = await res.json();
-                      if (res.ok && data.success && data.walletAddress) {
-                        setRecipientAddress(data.walletAddress);
-                        const shortAddr = `${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`;
-                        setPhoneResolutionStatus({
-                          type: "success",
-                          message: `Address found: ${shortAddr}`
-                        });
-                        
-                        const matchedCountry = countries.find(c => cleanedPhone.startsWith(c.code));
-                        if (matchedCountry) {
-                          setSelectedPrefix(matchedCountry.code);
-                          setRecipientPhone(cleanedPhone.slice(matchedCountry.code.length));
-                        } else {
-                          setRecipientPhone(cleanedPhone);
-                        }
-                        showToast("Address resolved from contact!", "success");
-                        setIsResolvingPhone(false);
-                        return;
-                      } else {
-                        setPhoneResolutionStatus({
-                          type: "not_found",
-                          message: `Contact selected, but no wallet registered for ${cleanedPhone}.`
-                        });
-                      }
-                    }
-                  }
-                  setIsResolvingPhone(false);
-                  return;
-                } catch (webContactErr) {
-                  console.error("Web Contact Picker fallback failed:", webContactErr);
-                }
-              }
+            if (isMiniPayApp) {
+              // We are in MiniPay. Do NOT open the Mock Contact Picker.
+              // Show the actual error message so the user can verify permissions, etc.
+              setPhoneResolutionStatus({
+                type: "not_found",
+                message: `Failed to retrieve contact: ${errStr}. Please enter the phone number or address manually.`
+              });
+              showToast(`Contacts lookup failed: ${errStr}`, "error");
+              setShowManualAddress(true);
+            } else {
+              // We are in desktop browser. Open Sendease Mock Contacts Directory for testing.
+              setShowMockContactPicker(true);
+              showToast("Opening Sendease Contacts Directory (Fallback)", "success");
+              setShowManualAddress(true);
             }
-
-            // Launch Sendease Mock Contact Picker as a robust fallback for Mini App Test/Development environments
-            setShowMockContactPicker(true);
-            showToast("Opening Sendease Contacts Directory (Fallback)", "success");
-            setShowManualAddress(true);
           } finally {
             setIsResolvingPhone(false);
           }
         } else {
-          // No provider at all (e.g. Desktop browser testing) - open Mock Contact Picker too
+          // No provider at all (e.g. Desktop browser testing) - open Mock Contact Picker
           setShowMockContactPicker(true);
           showToast("Opening Sendease Contacts Directory (Fallback)", "success");
           setShowManualAddress(true);
