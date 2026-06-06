@@ -65,55 +65,25 @@ export default function CreateRemittance() {
   const handlePhoneLookup = async (phone: string) => {
     // If phone is empty, it means we clicked "Pick from Contacts" in MiniPay
     if (!phone) {
-      if (typeof window !== "undefined" && (window as any).ethereum) {
-        setIsResolvingPhone(true);
-        setPhoneResolutionStatus({ type: "idle", message: "" });
-        try {
-          const ethereum = (window as any).ethereum;
-          const contact = await ethereum.request({
-            method: "minipay_requestContact",
-          });
-
-          if (contact && contact.address) {
-            setRecipientAddress(contact.address);
-            if (contact.name) {
-              setRecipientName(contact.name);
-            }
-            if (contact.phoneNumber) {
-              const phoneVal = contact.phoneNumber;
-              const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
-              if (matchedCountry) {
-                setSelectedPrefix(matchedCountry.code);
-                setRecipientPhone(phoneVal.slice(matchedCountry.code.length));
-              } else {
-                setRecipientPhone(phoneVal);
-              }
-            }
-            const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
-            setPhoneResolutionStatus({
-              type: "success",
-              message: `Address found: ${shortAddr}`
-            });
-            showToast("Address found successfully!", "success");
-          } else {
-            setPhoneResolutionStatus({
-              type: "not_found",
-              message: "No contact selected or contact has no wallet."
-            });
-          }
-        } catch (err: any) {
-          console.error("Failed to retrieve contact from MiniPay:", err);
-          
-          // Fallback to phoneBook_selectContact if minipay_requestContact is unsupported
+      if (typeof window !== "undefined") {
+        const ethereum = (window as any).ethereum;
+        // Check if actually running inside MiniPay client wrapper
+        if (ethereum && ethereum.isMiniPay) {
+          setIsResolvingPhone(true);
+          setPhoneResolutionStatus({ type: "idle", message: "" });
           try {
-            const contactFallback = await (window as any).ethereum.request({
-              method: "phoneBook_selectContact"
+            // MiniPay standard contact method request
+            const contact = await ethereum.request({
+              method: "minipay_requestContact",
             });
-            if (contactFallback && contactFallback.address) {
-              setRecipientAddress(contactFallback.address);
-              if (contactFallback.name) setRecipientName(contactFallback.name);
-              if (contactFallback.phoneNumber) {
-                const phoneVal = contactFallback.phoneNumber;
+
+            if (contact && contact.address) {
+              setRecipientAddress(contact.address);
+              if (contact.name) {
+                setRecipientName(contact.name);
+              }
+              if (contact.phoneNumber) {
+                const phoneVal = contact.phoneNumber;
                 const matchedCountry = countries.find(c => phoneVal.startsWith(c.code));
                 if (matchedCountry) {
                   setSelectedPrefix(matchedCountry.code);
@@ -122,26 +92,35 @@ export default function CreateRemittance() {
                   setRecipientPhone(phoneVal);
                 }
               }
-              const shortAddr = `${contactFallback.address.slice(0, 6)}...${contactFallback.address.slice(-4)}`;
+              const shortAddr = `${contact.address.slice(0, 6)}...${contact.address.slice(-4)}`;
               setPhoneResolutionStatus({
                 type: "success",
                 message: `Address found: ${shortAddr}`
               });
               showToast("Address found successfully!", "success");
-              setIsResolvingPhone(false);
-              return;
+            } else {
+              setPhoneResolutionStatus({
+                type: "not_found",
+                message: "No contact selected or contact has no wallet."
+              });
             }
-          } catch (innerErr) {
-            console.error("phoneBook_selectContact fallback failed:", innerErr);
+          } catch (err: any) {
+            console.error("Failed to retrieve contact from MiniPay:", err);
+            setPhoneResolutionStatus({
+              type: "not_found",
+              message: "Could not retrieve contact from MiniPay. Please type phone number or enter address manually."
+            });
+            showToast("Failed to retrieve contact from MiniPay", "error");
+          } finally {
+            setIsResolvingPhone(false);
           }
-
+          // Development / Non-MiniPay Browser Fallback
+          showToast("Contacts picker only works inside MiniPay app.", "error");
+          setShowManualAddress(true);
           setPhoneResolutionStatus({
             type: "not_found",
-            message: "Could not retrieve contact from MiniPay. Please type phone number or enter address manually."
+            message: "Contacts picker only works inside MiniPay app. Please type number manually."
           });
-          showToast("Failed to retrieve contact from MiniPay", "error");
-        } finally {
-          setIsResolvingPhone(false);
         }
       }
       return;
