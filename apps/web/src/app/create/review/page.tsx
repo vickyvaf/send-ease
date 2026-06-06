@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/navigation";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { parseUnits, type Hex } from "viem";
-import { ShieldCheck, User, Calendar, DollarSign, Activity, Settings, AlertCircle } from "lucide-react";
+import { ShieldCheck, User, Calendar, DollarSign, Activity, Settings, AlertCircle, ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/context/toast-context";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
@@ -149,15 +149,17 @@ export default function ReviewApprove() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2 mb-2">
-        <button onClick={() => router.back()} className="text-muted-foreground hover:text-foreground text-sm shrink-0 flex items-center gap-1 font-bold">
-          ← Back
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={() => router.back()} 
+          className="text-muted-foreground hover:text-foreground text-sm shrink-0 flex items-center gap-1 font-bold p-1 hover:bg-slate-100 rounded-lg transition-colors"
+        >
+          <ChevronLeft className="h-5 w-5" />
         </button>
-      </div>
-
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-foreground">Confirm Remittance</h1>
-        <p className="text-xs text-muted-foreground">Review details and approve transactions in MiniPay.</p>
+        <div className="space-y-0.5">
+          <h1 className="text-xl font-bold text-foreground leading-tight">Confirm Remittance</h1>
+          <p className="text-xs text-muted-foreground">Review details and approve transactions in MiniPay.</p>
+        </div>
       </div>
 
       {/* Summary Card */}
@@ -229,7 +231,7 @@ export default function ReviewApprove() {
       </div>
 
       {/* Action Buttons */}
-      <div className="space-y-2 pt-2">
+      <div className="pt-2">
         <button
           onClick={checkAllowanceAndSign}
           disabled={loading}
@@ -240,13 +242,6 @@ export default function ReviewApprove() {
           ) : (
             <span>Confirm & Sign in MiniPay</span>
           )}
-        </button>
-        <button
-          onClick={() => router.back()}
-          disabled={loading}
-          className="w-full bg-white border border-border text-foreground hover:bg-primary/5 hover:border-primary/30 font-bold py-2.5 rounded-xl text-sm active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-        >
-          Modify Details
         </button>
       </div>
     </div>

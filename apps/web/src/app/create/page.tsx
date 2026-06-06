@@ -454,7 +454,7 @@ export default function CreateRemittance() {
             </Label>
             <Input
               id="recipientName"
-              placeholder="e.g. Ana Smith"
+              placeholder="Ana Smith"
               value={recipientName}
               onChange={(e) => setRecipientName(e.target.value)}
               className="rounded-xl border-border focus-visible:ring-[#09955F]"
@@ -529,9 +529,8 @@ export default function CreateRemittance() {
                                 setShowPhoneDropdown(false);
                                 setCountrySearch("");
                               }}
-                              className={`flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-50 transition-colors ${
-                                selectedPrefix === c.code ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
-                              }`}
+                              className={`flex items-center justify-between w-full px-3 py-1.5 text-left hover:bg-slate-50 transition-colors ${selectedPrefix === c.code ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
+                                }`}
                             >
                               <span className="text-xs flex items-center gap-1.5">
                                 <span>{c.flag}</span>
@@ -696,9 +695,8 @@ export default function CreateRemittance() {
                           setFrequency(option);
                           setShowFrequencyDropdown(false);
                         }}
-                        className={`flex items-center w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors ${
-                          frequency === option ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
-                        }`}
+                        className={`flex items-center w-full px-3 py-2 text-left hover:bg-slate-50 transition-colors ${frequency === option ? "bg-slate-100/70 font-semibold text-slate-900" : "text-slate-600"
+                          }`}
                       >
                         <span className="text-sm">{option}</span>
                       </button>
@@ -783,11 +781,10 @@ export default function CreateRemittance() {
                           key={idx}
                           type="button"
                           onClick={() => handleDateSelect(day)}
-                          className={`h-7 w-7 text-xs rounded-full flex items-center justify-center transition-all ${
-                            isSelected
-                              ? "bg-[#09955F] text-white font-bold"
-                              : "hover:bg-slate-100 text-slate-700"
-                          }`}
+                          className={`h-7 w-7 text-xs rounded-full flex items-center justify-center transition-all ${isSelected
+                            ? "bg-[#09955F] text-white font-bold"
+                            : "hover:bg-slate-100 text-slate-700"
+                            }`}
                         >
                           {day}
                         </button>
