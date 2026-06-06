@@ -134,26 +134,28 @@ export default function CreateRemittance() {
             // Always enable manual address input fallback if contact picker fails
             setShowManualAddress(true);
 
+            const detailedErrorMessage = errStr ? `${errStr} (Code: ${errCode || 'none'})` : JSON.stringify(err);
+
             if (isUnsupported) {
               if (isMiniPayApp) {
-                showToast("Contact picker is not supported on this version of MiniPay.", "error");
+                showToast(`Contact picker is not supported: ${detailedErrorMessage}`, "error");
                 setPhoneResolutionStatus({
                   type: "not_found",
-                  message: "Contact picker is not supported on this version of MiniPay. Please type the phone number or address manually."
+                  message: `Contact picker is not supported on this version of MiniPay. Raw error: ${detailedErrorMessage}. Please type the phone number or address manually.`
                 });
               } else {
-                showToast("Contacts picker only works inside MiniPay app.", "error");
+                showToast(`Contacts picker only works inside MiniPay app: ${detailedErrorMessage}`, "error");
                 setPhoneResolutionStatus({
                   type: "not_found",
-                  message: "Contacts picker only works inside MiniPay app. Please type number manually."
+                  message: `Contacts picker only works inside MiniPay app. Raw error: ${detailedErrorMessage}. Please type number manually.`
                 });
               }
             } else {
               setPhoneResolutionStatus({
                 type: "not_found",
-                message: "Could not retrieve contact from MiniPay. Please type phone number or enter address manually."
+                message: `Could not retrieve contact from MiniPay. Raw error: ${detailedErrorMessage}. Please type phone number or enter address manually.`
               });
-              showToast("Failed to retrieve contact from MiniPay", "error");
+              showToast(`Failed to retrieve contact: ${detailedErrorMessage}`, "error");
             }
           } finally {
             setIsResolvingPhone(false);
