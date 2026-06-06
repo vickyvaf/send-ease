@@ -560,7 +560,7 @@ export default function CreateRemittance() {
                 id="pickContact"
                 onClick={() => handlePhoneLookup("")}
                 disabled={isResolvingPhone}
-                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-dashed border-[#09955F]/40 bg-[#09955F]/[0.03] text-[#09955F] hover:bg-[#09955F]/[0.07] hover:border-[#09955F]/60 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 h-10 rounded-xl border-2 border-dashed border-[#09955F]/40 bg-[#09955F]/[0.03] text-[#09955F] hover:bg-[#09955F]/[0.07] hover:border-[#09955F]/60 font-bold text-sm transition-all active:scale-[0.98] disabled:opacity-50"
               >
                 {isResolvingPhone ? (
                   <Loader2 size={15} className="animate-spin" />
