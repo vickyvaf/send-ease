@@ -4,31 +4,40 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* #FFFFFF */
-    --foreground: 240 5% 16%; /* #27272A */
+    --background: 0 0% 100%;
+    /* #FFFFFF */
+    --foreground: 240 5% 16%;
+    /* #27272A */
 
-    --card: 0 0% 100%; /* #FFFFFF */
+    --card: 0 0% 100%;
+    /* #FFFFFF */
     --card-foreground: 240 5% 16%;
 
     --popover: 0 0% 100%;
     --popover-foreground: 240 5% 16%;
 
-    --primary: 157 89% 31%; /* #09955F */
+    --primary: 157 89% 31%;
+    /* #09955F */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 5% 90%; /* #E4E4E7 */
+    --secondary: 240 5% 90%;
+    /* #E4E4E7 */
     --secondary-foreground: 240 5% 16%;
 
-    --muted: 240 5% 98%; /* #F9F9FB */
-    --muted-foreground: 240 4% 46%; /* #71717A */
+    --muted: 240 5% 98%;
+    /* #F9F9FB */
+    --muted-foreground: 240 4% 46%;
+    /* #71717A */
 
     --accent: 157 89% 31%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 72.2% 50.6%; /* #DC2626 */
+    --destructive: 0 72.2% 50.6%;
+    /* #DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 240 5% 90%; /* #E4E4E7 */
+    --border: 240 5% 90%;
+    /* #E4E4E7 */
     --input: 240 5% 90%;
     --ring: 157 89% 31%;
 
@@ -63,6 +72,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -72,6 +82,7 @@
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;

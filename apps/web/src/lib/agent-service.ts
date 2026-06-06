@@ -89,7 +89,7 @@ Capabilities:
    - amount (number, positive)
    - currency (fixed to "USDm")
    - frequency (string, "One-time" | "Weekly" | "Monthly")
-   - startDate (string, YYYY-MM-DD format. Assume current date is ${currentDateStr}. If the user mentions a specific day e.g., "tiap tanggal 5", calculate the next YYYY-MM-DD date that falls on the 5th. If no date is specified, use today's date ${currentDateStr}.)
+   - startDate (string, YYYY-MM-DD format. Assume current date is ${currentDateStr}. If the user mentions a specific day e.g., "every 5th" or "tiap tanggal 5", calculate the next YYYY-MM-DD date that falls on the 5th. If no date is specified, use today's date ${currentDateStr}.)
    - hasMonthlyLimit (boolean, defaults to false, set to true if user mentions monthly safety limit or max amount)
    - maxMonthlyAmount (number, optional, the safety limit amount)
 
@@ -107,7 +107,7 @@ If the user request is missing critical information required to schedule a payme
 
 If the user is asking a general question, greeting, chatting, or asking about their active schedules, reply using context with:
 {
-  "generalResponse": "A friendly, helpful response in Plain Indonesian or English answering their question or listing their schedules, referencing the provided active remittances context."
+  "generalResponse": "A friendly, helpful response in English answering their question or listing their schedules, referencing the provided active remittances context."
 }
 
 Respond ONLY with the JSON block. Do not include markdown formatting or backticks.

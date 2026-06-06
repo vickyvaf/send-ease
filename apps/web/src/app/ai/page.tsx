@@ -105,7 +105,7 @@ export default function AIAgent() {
     setMessages([
       {
         role: "bot",
-        content: "Hi! I'm your Sendease Assistant. I can help you schedule a stablecoin remittance on Celo. Try saying: \"Kirim 100 USDm ke Ana tiap tanggal 1\". How can I help you today?"
+        content: "Hi! I'm your Sendease Assistant. I can help you schedule a stablecoin remittance on Celo. Try saying: \"Send 100 USDm to Ana on the 1st of every month\". How can I help you today?"
       }
     ]);
   };
@@ -118,7 +118,7 @@ export default function AIAgent() {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = 'id-ID'; // Default to Indonesian matching user settings, or en-US
+    recognition.lang = 'en-US'; // Default to English as requested
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -255,9 +255,9 @@ export default function AIAgent() {
   };
 
   const suggestions = [
-    "Kirim 10 USDm ke Ana tiap tanggal 5",
-    "Jadwalkan 50 USDm ke Bob tiap bulan",
-    "Berapa remitansi aktif saya?",
+    "Send 10 USDm to Ana on the 5th of every month",
+    "Schedule 50 USDm to Bob every month",
+    "What are my active remittances?",
   ];
 
   return (
