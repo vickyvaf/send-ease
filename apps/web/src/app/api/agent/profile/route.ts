@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const service = new AgentService();
     const address = process.env.AGENT_WALLET_ADDRESS || service.getAgentAddress();
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://send-ease.vercel.app";
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sendease.xyz";
     const imageUrl = process.env.NEXT_PUBLIC_AGENT_IMAGE_URL || staticProfile.image;
     const chainId = parseInt(process.env.AGENT_CHAIN_ID || "42220", 10);
     const envAgentId = process.env.AGENT_ID ? parseInt(process.env.AGENT_ID, 10) : undefined;

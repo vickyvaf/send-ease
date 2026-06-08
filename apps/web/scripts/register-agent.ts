@@ -71,7 +71,7 @@ async function main() {
     transport: http(rpcUrl),
   });
 
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://send-ease.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://sendease.xyz";
   const agentURI = `${baseUrl}/api/agent/profile`;
   console.log(`Metadata URI (agentURI): ${agentURI}`);
   console.log("----------------------------------------");

@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Sendease - Automated Stablecoin Remittance on Celo',
     description: 'Automated, scheduled stablecoin remittance for MiniPay. Set up recurring payments on the Celo network easily.',
-    url: 'https://sendease.vercel.app',
+    url: 'https://sendease.xyz',
     siteName: 'Sendease',
     images: [
       {
