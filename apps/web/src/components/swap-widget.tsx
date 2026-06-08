@@ -136,8 +136,12 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
           setPhoneResolutionStatus(null);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error choosing from contact list:", err);
+      setPhoneResolutionStatus({
+        type: "error",
+        message: `Failed to open contacts: ${err?.message || String(err)}`,
+      });
     }
   };
 
