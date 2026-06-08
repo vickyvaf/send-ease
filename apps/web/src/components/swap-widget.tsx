@@ -85,10 +85,19 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
   const historyDropdownRef = useRef<HTMLDivElement>(null);
   const hasInitializedRef = useRef(false);
 
-  // Check if Web Contact Picker API is supported
+  // Check if Web Contact Picker API is supported and not restricted by iframe sandbox (like in MiniPay)
   useEffect(() => {
-    if (typeof window !== "undefined" && (navigator as any).contacts && typeof (navigator as any).contacts.select === "function") {
-      setIsContactSupported(true);
+    if (typeof window !== "undefined") {
+      const isIframe = window.self !== window.top;
+      const isMiniPay = !!(window as any).ethereum?.isMiniPay;
+      const hasContactsApi = (navigator as any).contacts && typeof (navigator as any).contacts.select === "function";
+      
+      // Contact picker is blocked by browser security inside iframes unless explicitly allowed by the parent frame
+      if (hasContactsApi && !isIframe && !isMiniPay) {
+        setIsContactSupported(true);
+      } else {
+        setIsContactSupported(false);
+      }
     }
   }, []);
 
@@ -784,14 +793,16 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
             )
           )}
 
-          <button
-            type="button"
-            onClick={handlePickContact}
-            className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-[#09955F] transition-all shrink-0"
-            title="Select from Contacts"
-          >
-            <User className="w-4.5 h-4.5" />
-          </button>
+          {isContactSupported && (
+            <button
+              type="button"
+              onClick={handlePickContact}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-[#09955F] transition-all shrink-0"
+              title="Select from Contacts"
+            >
+              <User className="w-4.5 h-4.5" />
+            </button>
+          )}
 
           {/* Contact History Dropdown */}
           {contactHistory.length > 0 && (
