@@ -48,7 +48,34 @@ export default function ScheduleDetail({ params }: PageProps) {
   const fetchDetails = useCallback(async () => {
     if (!isConnected || !address || !publicClient) return;
 
-    setLoading(true);
+    const cacheKey = `sendease_schedule_cache_${scheduleId.toString()}`;
+    let hasCache = false;
+    const cachedSchedule = localStorage.getItem(cacheKey);
+    if (cachedSchedule) {
+      try {
+        const parsedCache = JSON.parse(cachedSchedule);
+        if (parsedCache.schedule) {
+          setSchedule(parsedCache.schedule);
+          setHistoryLogs(parsedCache.historyLogs || []);
+          
+          // Pre-fill form inputs from cache
+          setEditAmount(Number(parsedCache.schedule.amount).toFixed(2));
+          setEditHasLimit(parsedCache.schedule.hasMonthlyLimit);
+          if (parsedCache.schedule.hasMonthlyLimit) {
+            setEditLimit(Number(parsedCache.schedule.maxMonthlyAmount).toFixed(2));
+          }
+          hasCache = true;
+        }
+      } catch (e) {
+        console.error("Failed to parse schedule cache", e);
+      }
+    }
+
+    if (!hasCache) {
+      setLoading(true);
+    }
+    
+    let mappedSchedule: any = null;
     try {
       // 1. Fetch Schedule Config
       const s = (await publicClient.readContract({
@@ -58,7 +85,11 @@ export default function ScheduleDetail({ params }: PageProps) {
         args: [scheduleId],
       })) as any;
 
-      const mapped = {
+      if (Number(s.id) === 0 && Number(scheduleId) !== 0) {
+        throw new Error("Schedule not found on-chain");
+      }
+
+      mappedSchedule = {
         id: Number(s.id),
         owner: s.owner,
         recipient: s.recipient,
@@ -73,15 +104,66 @@ export default function ScheduleDetail({ params }: PageProps) {
         recipientName: s.recipientName,
         recipientPhone: s.recipientPhone,
       };
-      setSchedule(mapped);
+      setSchedule(mappedSchedule);
 
       // Pre-fill form inputs — amounts are in USD
-      setEditAmount(mapped.amount.toFixed(2));
-      setEditHasLimit(mapped.hasMonthlyLimit);
-      if (mapped.hasMonthlyLimit) {
-        setEditLimit(mapped.maxMonthlyAmount.toFixed(2));
+      setEditAmount(mappedSchedule.amount.toFixed(2));
+      setEditHasLimit(mappedSchedule.hasMonthlyLimit);
+      if (mappedSchedule.hasMonthlyLimit) {
+        setEditLimit(mappedSchedule.maxMonthlyAmount.toFixed(2));
+      }
+    } catch (e: any) {
+      const isContractNotDeployed = e instanceof Error && (
+        e.message.includes("returned no data") ||
+        e.message.includes("0x") ||
+        e.message.includes("not a contract")
+      );
+      
+      // Try to load from localStorage fallback
+      const savedLocalSchedules = localStorage.getItem("sendease_local_schedules");
+      if (savedLocalSchedules) {
+        try {
+          const localSchedules = JSON.parse(savedLocalSchedules);
+          const found = localSchedules.find((item: any) => Number(item.id) === Number(scheduleId));
+          if (found) {
+            setSchedule(found);
+            
+            // Pre-fill form inputs for local schedule fallback
+            setEditAmount(Number(found.amount).toFixed(2));
+            setEditHasLimit(found.hasMonthlyLimit);
+            if (found.hasMonthlyLimit) {
+              setEditLimit(Number(found.maxMonthlyAmount).toFixed(2));
+            }
+            
+            setHistoryLogs([]); // No on-chain history logs for mock local schedules
+            
+            // Update cache
+            localStorage.setItem(cacheKey, JSON.stringify({
+              schedule: found,
+              historyLogs: []
+            }));
+
+            setLoading(false);
+            return;
+          }
+        } catch (localErr) {
+          console.error("Failed to read local schedule fallback:", localErr);
+        }
       }
 
+      if (isContractNotDeployed) {
+        console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
+        setSchedule(null);
+      } else {
+        console.error("Failed to load schedule:", e);
+        showToast("Failed to load schedule details", "error");
+        setSchedule(null);
+      }
+      setLoading(false);
+      return;
+    }
+
+    try {
       // 2. Fetch specific logs for this schedule
       const events = await publicClient.getContractEvents({
         address: contractAddress,
@@ -110,38 +192,23 @@ export default function ScheduleDetail({ params }: PageProps) {
           });
         }
       }
-      setHistoryLogs(parsedLogs.reverse());
-    } catch (e: any) {
-      const isContractNotDeployed = e instanceof Error && (
-        e.message.includes("returned no data") ||
-        e.message.includes("0x") ||
-        e.message.includes("not a contract")
-      );
-      
-      // Try to load from localStorage fallback
-      const savedLocalSchedules = localStorage.getItem("sendease_local_schedules");
-      if (savedLocalSchedules) {
-        try {
-          const localSchedules = JSON.parse(savedLocalSchedules);
-          const found = localSchedules.find((item: any) => Number(item.id) === Number(scheduleId));
-          if (found) {
-            setSchedule(found);
-            setHistoryLogs([]); // No on-chain history logs for mock local schedules
-            setLoading(false);
-            return;
-          }
-        } catch (localErr) {
-          console.error("Failed to read local schedule fallback:", localErr);
-        }
-      }
+      const finalLogs = parsedLogs.reverse();
+      setHistoryLogs(finalLogs);
 
-      if (isContractNotDeployed) {
-        console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
-        setSchedule(null);
-      } else {
-        console.error(e);
-        showToast("Failed to load schedule details", "error");
-      }
+      // Update cache with fresh data
+      localStorage.setItem(cacheKey, JSON.stringify({
+        schedule: mappedSchedule,
+        historyLogs: finalLogs
+      }));
+    } catch (e: any) {
+      console.error("Failed to fetch event logs:", e);
+      setHistoryLogs([]);
+      
+      // Update cache even if logs fail
+      localStorage.setItem(cacheKey, JSON.stringify({
+        schedule: mappedSchedule,
+        historyLogs: []
+      }));
     } finally {
       setLoading(false);
     }

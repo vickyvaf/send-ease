@@ -52,7 +52,24 @@ export default function Home() {
   const fetchData = useCallback(async () => {
     if (!isConnected || !address || !publicClient) return;
 
-    setLoading(true);
+    const cacheKey = `sendease_dashboard_cache_${address.toLowerCase()}`;
+    let hasCache = false;
+    const cachedDashboard = localStorage.getItem(cacheKey);
+    if (cachedDashboard) {
+      try {
+        const parsedCache = JSON.parse(cachedDashboard);
+        setSchedules(parsedCache.schedules || []);
+        setHistoryLogs(parsedCache.historyLogs || []);
+        hasCache = true;
+      } catch (e) {
+        console.error("Failed to parse dashboard cache", e);
+      }
+    }
+
+    if (!hasCache) {
+      setLoading(true);
+    }
+
     try {
       // 1. Fetch schedules
       const count = (await publicClient.readContract({
@@ -182,7 +199,14 @@ export default function Home() {
         }));
 
         // Show newest logs first
-        setHistoryLogs([...formattedLocal, ...parsedLogs.reverse()]);
+        const finalLogs = [...formattedLocal, ...parsedLogs.reverse()];
+        setHistoryLogs(finalLogs);
+
+        // Update Cache with fresh data
+        localStorage.setItem(cacheKey, JSON.stringify({
+          schedules: mergedSchedules,
+          historyLogs: finalLogs
+        }));
       } catch (errEvent) {
         console.error("Failed to query event logs", errEvent);
       }
@@ -230,6 +254,12 @@ export default function Home() {
 
         setSchedules(userLocalSchedules);
         setHistoryLogs(formattedLocal);
+
+        // Update Cache with fresh data
+        localStorage.setItem(cacheKey, JSON.stringify({
+          schedules: userLocalSchedules,
+          historyLogs: formattedLocal
+        }));
       } else {
         console.error("Failed to load dashboard data", e);
         showToast("Failed to load on-chain remittance data", "error");
