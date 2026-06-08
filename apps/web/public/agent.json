@@ -2,7 +2,7 @@
   "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
   "name": "SendeaseAgent",
   "description": "Scheduled recurring stablecoin remittance AI agent on Celo.",
-  "image": "https://raw.githubusercontent.com/vickyvaf/send-ease/main/apps/web/public/icon.png",
+  "image": "https://raw.githubusercontent.com/vickyvaf/send-ease/main/apps/web/public/logo.png",
   "registrations": [
     {
       "agentRegistry": "eip155:42220:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432",
