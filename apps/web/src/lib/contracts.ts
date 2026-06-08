@@ -1,5 +1,5 @@
 export const REMITTANCE_ADDRESSES = {
-  42220: (process.env.NEXT_PUBLIC_REMITTANCE_ADDRESS_MAINNET || "0x12b5B519C649B26FCd5583B48227B9c97be5D78a") as `0x${string}`, // Celo Mainnet placeholder
+  42220: (process.env.NEXT_PUBLIC_REMITTANCE_ADDRESS_MAINNET || "0xb5215bc86f27263f2db971f5c6d31bf4d1416b97") as `0x${string}`, // Celo Mainnet placeholder
   11142220: (process.env.NEXT_PUBLIC_REMITTANCE_ADDRESS_SEPOLIA || "0xfaC7D120ecc8b19f7a1468dA355386c99b8565F6") as `0x${string}`, // Celo Sepolia placeholder
 } as const;
 

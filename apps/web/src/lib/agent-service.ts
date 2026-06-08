@@ -117,7 +117,7 @@ ${historyContext}
 
     try {
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-2.0-flash",
         systemInstruction: systemInstruction,
         generationConfig: {
           responseMimeType: "application/json",
@@ -163,10 +163,106 @@ ${historyContext}
         },
       };
     } catch (err) {
+      console.warn("Gemini API error, falling back to local NLP parser:", err);
+      try {
+        return this.parsePromptLocally(prompt);
+      } catch (localErr) {
+        return {
+          success: false,
+          error: err instanceof Error ? err.message : "Failed to parse natural language intent.",
+        };
+      }
+    }
+  }
+
+  private parsePromptLocally(prompt: string): AgentActionResponse {
+    const promptLower = prompt.toLowerCase();
+    
+    // Check for standard transaction amount
+    const amountMatch = promptLower.match(/kirim\s+(\d+(?:\.\d+)?)/i) || promptLower.match(/(\d+(?:\.\d+)?)\s*usdm/i);
+    const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
+    
+    // Recipient name extraction
+    const recipientMatch = promptLower.match(/ke\s+([a-zA-Z0-9]+)/i) || promptLower.match(/untuk\s+([a-zA-Z0-9]+)/i) || promptLower.match(/to\s+([a-zA-Z0-9]+)/i);
+    const recipientName = recipientMatch ? recipientMatch[1] : null;
+    
+    // Check if it's general/greeting
+    if (!amount || !recipientName) {
+      if (promptLower.includes("halo") || promptLower.includes("hello") || promptLower.includes("hi") || promptLower.includes("hei")) {
+        return {
+          success: true,
+          data: {
+            message: "Hello! I am your Sendease AI assistant. I can help you schedule automated, recurring stablecoin payments on Celo. Try saying: 'Kirim 10 USDm ke Ana tiap tanggal 5'."
+          }
+        };
+      }
       return {
         success: false,
-        error: err instanceof Error ? err.message : "Failed to parse natural language intent.",
+        error: "Missing details",
+        clarification: "I couldn't parse the remittance details. Please specify the recipient name and amount (e.g., 'Kirim 10 USDm ke Ana')."
       };
     }
+    
+    // Frequency extraction
+    let frequency = "One-time";
+    if (promptLower.includes("tiap") || promptLower.includes("setiap") || promptLower.includes("every")) {
+      if (promptLower.includes("minggu") || promptLower.includes("weekly")) {
+        frequency = "Weekly";
+      } else if (promptLower.includes("bulan") || promptLower.includes("monthly") || promptLower.includes("tanggal") || promptLower.includes("date")) {
+        frequency = "Monthly";
+      }
+    }
+    
+    // Start date extraction
+    let startDate = new Date().toISOString().split("T")[0];
+    const dateMatch = promptLower.match(/(?:tanggal|date|tgl)\s*(\d+)/i);
+    if (dateMatch && frequency === "Monthly") {
+      const targetDay = parseInt(dateMatch[1], 10);
+      if (targetDay >= 1 && targetDay <= 31) {
+        const now = new Date();
+        let targetMonth = now.getMonth();
+        let targetYear = now.getFullYear();
+        if (now.getDate() > targetDay) {
+          targetMonth += 1;
+          if (targetMonth > 11) {
+            targetMonth = 0;
+            targetYear += 1;
+          }
+        }
+        // Ensure valid day in target month
+        const daysInMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+        const safeDay = Math.min(targetDay, daysInMonth);
+        const targetDate = new Date(targetYear, targetMonth, safeDay);
+        startDate = targetDate.toISOString().split("T")[0];
+      }
+    }
+
+    const parsedParams = {
+      recipientName: recipientName.charAt(0).toUpperCase() + recipientName.slice(1),
+      recipientAddress: "0x1234567890123456789012345678901234567890", // dummy/placeholder
+      recipientPhone: "",
+      amount,
+      currency: "USDm" as const,
+      frequency: frequency as any,
+      startDate,
+      hasMonthlyLimit: false,
+      maxMonthlyAmount: 0,
+    };
+
+    const validated = CreateScheduleSchema.safeParse(parsedParams);
+    if (!validated.success) {
+      return {
+        success: false,
+        error: "Local validation failed: " + validated.error.issues.map((e) => e.message).join(", "),
+      };
+    }
+
+    return {
+      success: true,
+      data: {
+        capability: "create_schedule",
+        params: validated.data,
+      },
+    };
   }
 }

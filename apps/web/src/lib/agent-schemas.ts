@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const CreateScheduleSchema = z.object({
   recipientName: z.string().min(1, "Recipient name is required"),
-  recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{42}$/, "Invalid Celo address format"),
+  recipientAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/, "Invalid Celo address format"),
   recipientPhone: z.string().optional().default(""),
   amount: z.number().positive("Amount must be greater than zero"),
   currency: z.enum(["USDm"]).default("USDm"),
