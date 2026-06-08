@@ -97,12 +97,10 @@ export default function ScheduleDetail({ params }: PageProps) {
           let timeStr = "Recently";
           try {
             const block = await publicClient.getBlock({ blockNumber: ev.blockNumber });
-            timeStr = new Date(Number(block.timestamp) * 1000).toLocaleString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            });
+            const d = new Date(Number(block.timestamp) * 1000);
+            const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+            timeStr = `${datePart} ${timePart}`;
           } catch {}
 
           parsedLogs.push({
@@ -119,6 +117,24 @@ export default function ScheduleDetail({ params }: PageProps) {
         e.message.includes("0x") ||
         e.message.includes("not a contract")
       );
+      
+      // Try to load from localStorage fallback
+      const savedLocalSchedules = localStorage.getItem("sendease_local_schedules");
+      if (savedLocalSchedules) {
+        try {
+          const localSchedules = JSON.parse(savedLocalSchedules);
+          const found = localSchedules.find((item: any) => Number(item.id) === Number(scheduleId));
+          if (found) {
+            setSchedule(found);
+            setHistoryLogs([]); // No on-chain history logs for mock local schedules
+            setLoading(false);
+            return;
+          }
+        } catch (localErr) {
+          console.error("Failed to read local schedule fallback:", localErr);
+        }
+      }
+
       if (isContractNotDeployed) {
         console.warn(`RemittanceContract is not deployed at ${contractAddress} on chain ${chainId}.`);
         setSchedule(null);
@@ -388,11 +404,12 @@ export default function ScheduleDetail({ params }: PageProps) {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Next Scheduled Date</span>
                   <span className="font-bold text-foreground">
-                    {new Date(schedule.nextExecutionTimestamp * 1000).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
+                    {(() => {
+                      const d = new Date(schedule.nextExecutionTimestamp * 1000);
+                      const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+                      const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+                      return `${datePart} ${timePart}`;
+                    })()}
                   </span>
                 </div>
               )}

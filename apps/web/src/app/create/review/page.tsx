@@ -173,6 +173,68 @@ export default function ReviewApprove() {
       showToast("Remittance scheduled successfully!", "success");
       setStep("done");
 
+      // Save schedule creation activity to localStorage for Recent Activities integration
+      try {
+        const localActivity = {
+          recipient: pending.recipientName || pending.recipientPhone || pending.recipientAddress,
+          amount: pending.amount,
+          timestamp: (() => {
+            const d = new Date();
+            const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+            const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+            return `${datePart} ${timePart}`;
+          })(),
+          txHash: createHash,
+          tokenSymbol: "USDm",
+          type: "create_schedule",
+        };
+        const savedActivities = localStorage.getItem("sendease_recent_activities");
+        let activitiesList: any[] = [];
+        if (savedActivities) {
+          try {
+            activitiesList = JSON.parse(savedActivities);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        activitiesList.unshift(localActivity);
+        localStorage.setItem("sendease_recent_activities", JSON.stringify(activitiesList.slice(0, 20)));
+      } catch (err) {
+        console.error("Failed to save schedule activity", err);
+      }
+
+      // Save schedule to local storage fallback for Active Remittances integration
+      try {
+        const localSchedule = {
+          id: Date.now(), // unique local ID using timestamp
+          owner: address,
+          recipient: pending.recipientAddress,
+          amount: pending.amount,
+          frequency: pending.frequency === "One-time" ? 0 : pending.frequency === "Weekly" ? 1 : 2,
+          startDate: Math.floor(new Date(pending.startDate).getTime() / 1000),
+          nextExecutionTimestamp: Math.floor(new Date(pending.startDate).getTime() / 1000),
+          hasMonthlyLimit: pending.hasMonthlyLimit,
+          maxMonthlyAmount: pending.maxMonthlyAmount || 0,
+          currentMonthPaid: 0,
+          status: 0, // Active
+          recipientName: pending.recipientName,
+          recipientPhone: pending.recipientPhone,
+        };
+        const saved = localStorage.getItem("sendease_local_schedules");
+        let localSchedules: any[] = [];
+        if (saved) {
+          try {
+            localSchedules = JSON.parse(saved);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        localSchedules.push(localSchedule);
+        localStorage.setItem("sendease_local_schedules", JSON.stringify(localSchedules));
+      } catch (err) {
+        console.error("Failed to save local schedule fallback", err);
+      }
+
       // Save contact to history in localStorage
       try {
         const rawPhone = (pending.recipientPhone || "").trim();
@@ -321,8 +383,8 @@ export default function ReviewApprove() {
                   }
                 }}
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl border transition-all text-xs font-bold ${isSelected
-                    ? "bg-primary/10 border-primary text-primary shadow-xs"
-                    : "bg-white border-border text-muted-foreground hover:bg-slate-50"
+                  ? "bg-primary/10 border-primary text-primary shadow-xs"
+                  : "bg-white border-border text-muted-foreground hover:bg-slate-50"
                   }`}
               >
                 <div
@@ -356,7 +418,7 @@ export default function ReviewApprove() {
           {loading ? (
             <span>{step === "approve" ? "Approving Stablecoin..." : "Creating Schedule..."}</span>
           ) : (
-            <span>Confirm & Sign in MiniPay</span>
+            <span>Confirm</span>
           )}
         </button>
       </div>

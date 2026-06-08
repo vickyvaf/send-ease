@@ -34,6 +34,7 @@ interface PaymentLog {
   amount: number;
   timestamp: string;
   txHash: string;
+  type?: string;
 }
 
 export default function Home() {
@@ -92,7 +93,30 @@ export default function Home() {
           console.error(`Error reading schedule ${i}`, err);
         }
       }
-      setSchedules(list);
+      // Load local schedules fallback
+      const savedLocalSchedules = localStorage.getItem("sendease_local_schedules");
+      let localSchedules: RemittanceSchedule[] = [];
+      if (savedLocalSchedules) {
+        try {
+          localSchedules = JSON.parse(savedLocalSchedules);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      // Filter local schedules belonging to the active user
+      const userLocalSchedules = localSchedules.filter(
+        (s) => s.owner.toLowerCase() === address.toLowerCase()
+      );
+
+      // Merge on-chain list and local list
+      const mergedSchedules = [...list];
+      for (const ls of userLocalSchedules) {
+        if (!list.some(s => s.recipient.toLowerCase() === ls.recipient.toLowerCase() && s.amount === ls.amount && s.frequency === ls.frequency)) {
+          mergedSchedules.push(ls);
+        }
+      }
+      setSchedules(mergedSchedules);
 
       // 2. Fetch PaymentExecuted logs from events
       try {
@@ -116,10 +140,17 @@ export default function Home() {
             let timeStr = "Recently";
             try {
               const block = await publicClient.getBlock({ blockNumber: ev.blockNumber });
-              timeStr = new Date(Number(block.timestamp) * 1000).toLocaleDateString("en-US", {
+              const d = new Date(Number(block.timestamp) * 1000);
+              const datePart = d.toLocaleDateString("en-US", {
                 month: "short",
                 day: "numeric",
               });
+              const timePart = d.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              });
+              timeStr = `${datePart} ${timePart}`;
             } catch { }
 
             parsedLogs.push({
@@ -147,6 +178,7 @@ export default function Home() {
           amount: la.amount,
           timestamp: la.timestamp,
           txHash: la.txHash,
+          type: la.type || "transfer",
         }));
 
         // Show newest logs first
@@ -180,8 +212,23 @@ export default function Home() {
           amount: la.amount,
           timestamp: la.timestamp,
           txHash: la.txHash,
+          type: la.type || "transfer",
         }));
-        setSchedules([]);
+        // Load local schedules fallback
+        const savedLocalSchedules = localStorage.getItem("sendease_local_schedules");
+        let localSchedules: RemittanceSchedule[] = [];
+        if (savedLocalSchedules) {
+          try {
+            localSchedules = JSON.parse(savedLocalSchedules);
+          } catch (e) {
+            console.error(e);
+          }
+        }
+        const userLocalSchedules = localSchedules.filter(
+          (s) => s.owner.toLowerCase() === address.toLowerCase()
+        );
+
+        setSchedules(userLocalSchedules);
         setHistoryLogs(formattedLocal);
       } else {
         console.error("Failed to load dashboard data", e);
@@ -276,7 +323,12 @@ export default function Home() {
                         {item.nextExecutionTimestamp > 0 && (
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            Next: {new Date(item.nextExecutionTimestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                            Next: {(() => {
+                              const d = new Date(item.nextExecutionTimestamp * 1000);
+                              const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+                              const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+                              return `${datePart} ${timePart}`;
+                            })()}
                           </span>
                         )}
                       </div>
@@ -322,7 +374,9 @@ export default function Home() {
                     <FileText size={14} />
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">Sent to {log.recipient}</p>
+                    <p className="font-bold text-foreground">
+                      {log.type === "create_schedule" ? `Scheduled to ${log.recipient}` : `Sent to ${log.recipient}`}
+                    </p>
                     <p className="text-xs text-muted-foreground">{log.timestamp}</p>
                   </div>
                 </div>

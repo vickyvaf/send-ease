@@ -463,10 +463,12 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
       const localActivity = {
         recipient: fullPhoneNumber,
         amount: parseFloat(sellAmount),
-        timestamp: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-        }),
+        timestamp: (() => {
+          const d = new Date();
+          const datePart = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          const timePart = d.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false });
+          return `${datePart} ${timePart}`;
+        })(),
         txHash: txHash,
         tokenSymbol: sellToken,
       };
