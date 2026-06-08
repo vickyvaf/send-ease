@@ -14,6 +14,7 @@
     "@celo/contractkit": "^10.0.3",
     "@celo/identity": "^5.1.2",
     "@google/generative-ai": "^0.24.1",
+    "@mento-protocol/mento-sdk": "^3.2.8",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-label": "^2.1.8",
     "@radix-ui/react-slot": "^1.0.2",
