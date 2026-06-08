@@ -240,7 +240,6 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
     setRotation((prev) => prev + 180);
     if (!buyToken) {
       // If buy token is not selected yet, swap sellToken with default or just show warning
-      showToast("Select a buy token first to swap directions!", "success");
       return;
     }
     const tempToken = sellToken;
@@ -267,7 +266,11 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
           type: "success",
           message: `Wallet found: ${data.walletAddress.slice(0, 6)}...${data.walletAddress.slice(-4)}`,
         });
-        showToast("Recipient wallet address resolved successfully!", "success");
+      } else if (data.error === "ODIS_QUOTA_EMPTY") {
+        setPhoneResolutionStatus({
+          type: "error",
+          message: "Phone lookup unavailable. Please enter wallet address manually.",
+        });
       } else {
         setPhoneResolutionStatus({
           type: "error",
@@ -365,7 +368,6 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
     const destinationDesc = `${resolvedAddress.slice(0, 6)}...${resolvedAddress.slice(-4)} (${fullPhoneNumber})`;
 
     setIsTransferring(true);
-    showToast(`Initiating transfer of ${sellAmount} ${sellToken}...`, "success");
 
     try {
       const tokens = getStablecoinTokens(chainId);
@@ -385,10 +387,7 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
         args: [resolvedAddress as `0x${string}`, amountWei],
       });
 
-      showToast("Waiting for transaction confirmation...", "success");
       await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-      showToast(`Successfully transferred ${sellAmount} ${sellToken} to ${destinationDesc}!`, "success");
 
       // Save to recent activities in localstorage
       const localActivity = {
@@ -790,7 +789,6 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
                 onClick={() => {
                   navigator.clipboard.writeText(resolvedAddress);
                   setCopied(true);
-                  showToast("Wallet address copied!", "success");
                   setTimeout(() => setCopied(false), 2000);
                 }}
                 className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-[#09955F] transition-all shrink-0"

@@ -92,9 +92,12 @@ export default function CreateRemittance() {
           message: data.warning || "This person doesn't seem to have a MiniPay wallet yet."
         });
       } else {
+        const errorMsg = data.error === "ODIS_QUOTA_EMPTY"
+          ? "Phone lookup service unavailable. Please enter wallet address manually."
+          : (data.error || "Lookup failed. Please check the phone number or type address manually.");
         setPhoneResolutionStatus({
           type: "not_found",
-          message: data.error || "Lookup failed. Please check the phone number or type address manually."
+          message: errorMsg
         });
       }
     } catch (err: any) {
@@ -150,9 +153,12 @@ export default function CreateRemittance() {
             message: data.warning || "This person doesn't seem to have a MiniPay wallet yet."
           });
         } else {
+          const debounceErrorMsg = data.error === "ODIS_QUOTA_EMPTY"
+            ? "Phone lookup service unavailable. Please enter wallet address manually."
+            : (data.error || "Lookup failed. Please verify the phone number.");
           setPhoneResolutionStatus({
             type: "not_found",
-            message: data.error || "Lookup failed. Please verify the phone number."
+            message: debounceErrorMsg
           });
         }
       } catch (err: any) {

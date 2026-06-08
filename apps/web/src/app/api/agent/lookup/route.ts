@@ -3,7 +3,10 @@ import { OdisUtils } from "@celo/identity";
 import { newKit } from "@celo/contractkit";
 import type { AuthSigner } from "@celo/identity/lib/odis/query";
 
+// MiniPay official issuer
 const MINIPAY_ISSUER = "0x7888612486844Bb9BE598668081c59A9f7367FBc";
+// Sendease relayer — used as issuer for self-registered attestations
+const RELAYER_ISSUER = process.env.AGENT_WALLET_ADDRESS || "0x6599d6E7af6b13A2fCa80C7CA2035a94eE913293";
 
 export async function POST(request: Request) {
   try {
@@ -63,17 +66,44 @@ export async function POST(request: Request) {
       );
       obfuscatedIdentifier = response.obfuscatedIdentifier;
     } catch (odisErr: any) {
+      const errMsg = odisErr?.message || String(odisErr);
       console.error("ODIS getObfuscatedIdentifier failed:", odisErr);
+
+      // Detect quota error — the relayer wallet has no ODIS quota.
+      // This means the relayer cUSD balance needs to be topped up and
+      // fund-odis-quota.js must be run to buy quota from OdisPayments contract.
+      if (errMsg.includes("odisQuotaError") || errMsg.includes("quota")) {
+        return NextResponse.json({
+          success: false,
+          error: "ODIS_QUOTA_EMPTY",
+          message: "Phone number lookup is temporarily unavailable. The lookup service requires cUSD funding. Please run: node src/scripts/fund-odis-quota.js after sending 0.1 cUSD to the relayer.",
+        }, { status: 503 });
+      }
+
       return NextResponse.json({
         success: false,
-        error: `ODIS lookup failed: ${odisErr.message || odisErr}`
+        error: `ODIS lookup failed: ${errMsg}`
       }, { status: 500 });
     }
 
+
     try {
       const federated = await kit.contracts.getFederatedAttestations();
-      const { accounts } = await federated.lookupAttestations(obfuscatedIdentifier, [MINIPAY_ISSUER]);
-      const resolvedAddress = accounts[0] || null;
+
+      // Query both MiniPay issuer AND our relayer (for self-registered attestations)
+      const trustedIssuers = [MINIPAY_ISSUER, RELAYER_ISSUER];
+      const { accounts, issuedOns } = await federated.lookupAttestations(obfuscatedIdentifier, trustedIssuers);
+
+      let resolvedAddress: string | null = null;
+      if (accounts.length > 0) {
+        // Pick the most recently issued attestation (largest issuedOn timestamp)
+        let latestIdx = 0;
+        for (let i = 1; i < issuedOns.length; i++) {
+          if (BigInt(issuedOns[i]) > BigInt(issuedOns[latestIdx])) latestIdx = i;
+        }
+        resolvedAddress = accounts[latestIdx];
+        console.log(`Found ${accounts.length} attestation(s). Using latest (idx=${latestIdx}): ${resolvedAddress}`);
+      }
 
       console.log(`ODIS lookup completed. Resolved address: ${resolvedAddress}`);
 
