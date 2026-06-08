@@ -93,6 +93,13 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
   }, []);
 
   const handlePickContact = async () => {
+    if (typeof window === "undefined" || !(navigator as any).contacts || typeof (navigator as any).contacts.select !== "function") {
+      setPhoneResolutionStatus({
+        type: "error",
+        message: "Contact Picker is not supported on this device/browser.",
+      });
+      return;
+    }
     try {
       // @ts-ignore
       const contacts = await navigator.contacts.select(["tel", "name"], { multiple: false });
@@ -773,16 +780,14 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
             )
           )}
 
-          {isContactSupported && (
-            <button
-              type="button"
-              onClick={handlePickContact}
-              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-[#09955F] transition-all shrink-0"
-              title="Select from Contacts"
-            >
-              <User className="w-4.5 h-4.5" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handlePickContact}
+            className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-[#09955F] transition-all shrink-0"
+            title="Select from Contacts"
+          >
+            <User className="w-4.5 h-4.5" />
+          </button>
 
           {/* Contact History Dropdown */}
           {contactHistory.length > 0 && (
