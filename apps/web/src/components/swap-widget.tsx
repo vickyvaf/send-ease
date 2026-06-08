@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/context/toast-context";
 import { formatAmount } from "@/lib/app-utils";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { ArrowUpDown, ChevronDown, Send, Search, Copy, Check, X, Loader2, History } from "lucide-react";
+import { ArrowUpDown, ChevronDown, Send, Search, Copy, Check, X, Loader2, History, User } from "lucide-react";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { formatUnits, isAddress, parseUnits } from "viem";
@@ -77,12 +77,62 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
   const [isTransferring, setIsTransferring] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [isContactSupported, setIsContactSupported] = useState(false);
 
   const sellDropdownRef = useRef<HTMLDivElement>(null);
   const buyDropdownRef = useRef<HTMLDivElement>(null);
   const phoneDropdownRef = useRef<HTMLDivElement>(null);
   const historyDropdownRef = useRef<HTMLDivElement>(null);
   const hasInitializedRef = useRef(false);
+
+  // Check if Web Contact Picker API is supported
+  useEffect(() => {
+    if (typeof window !== "undefined" && (navigator as any).contacts && typeof (navigator as any).contacts.select === "function") {
+      setIsContactSupported(true);
+    }
+  }, []);
+
+  const handlePickContact = async () => {
+    try {
+      // @ts-ignore
+      const contacts = await navigator.contacts.select(["tel", "name"], { multiple: false });
+      if (contacts && contacts.length > 0) {
+        const contact = contacts[0];
+        let rawPhone = (contact.tel && contact.tel[0]) || "";
+        if (rawPhone) {
+          // Clean phone number format
+          let cleaned = rawPhone.trim().replace(/[^\d+]/g, ""); // Keep digits and plus signs
+          
+          // Check if it starts with any of our country codes
+          let prefixFound = false;
+          // Sort country list descending by code length to match longest prefix first (+62 before +6)
+          const sortedCountries = [...countries].sort((a, b) => b.code.length - a.code.length);
+          for (const c of sortedCountries) {
+            if (cleaned.startsWith(c.code)) {
+              setSelectedPrefix(c.code);
+              cleaned = cleaned.substring(c.code.length);
+              prefixFound = true;
+              break;
+            }
+          }
+
+          if (cleaned.startsWith("0")) {
+            cleaned = cleaned.substring(1);
+          }
+
+          // Clean up spaces/hyphens for formatting
+          cleaned = cleaned.replace(/[^\d]/g, "");
+          setPhoneNumber(cleaned);
+
+          // Clear previous resolution status
+          setResolvedAddress("");
+          setPhoneResolutionStatus(null);
+        }
+      }
+    } catch (err) {
+      console.error("Error choosing from contact list:", err);
+    }
+  };
 
   // Load contact history on mount
   useEffect(() => {
@@ -721,6 +771,17 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
                 <Search className="w-4 h-4" />
               </button>
             )
+          )}
+
+          {isContactSupported && (
+            <button
+              type="button"
+              onClick={handlePickContact}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-[#09955F] transition-all shrink-0"
+              title="Select from Contacts"
+            >
+              <User className="w-4.5 h-4.5" />
+            </button>
           )}
 
           {/* Contact History Dropdown */}
