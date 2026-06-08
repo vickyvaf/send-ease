@@ -127,6 +127,8 @@ export default function CreateRemittance() {
       return;
     }
 
+    const abortController = new AbortController();
+
     const delayDebounceFn = setTimeout(async () => {
       setIsResolvingPhone(true);
       setPhoneResolutionStatus({ type: "idle", message: "" });
@@ -136,6 +138,7 @@ export default function CreateRemittance() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ phoneNumber: fullPhoneNumber, chainId }),
+          signal: abortController.signal,
         });
 
         const data = await res.json();
@@ -162,17 +165,25 @@ export default function CreateRemittance() {
           });
         }
       } catch (err: any) {
+        if (err.name === "AbortError") {
+          return;
+        }
         console.error("Lookup error:", err);
         setPhoneResolutionStatus({
           type: "not_found",
           message: err.message || "Lookup failed. Network error."
         });
       } finally {
-        setIsResolvingPhone(false);
+        if (!abortController.signal.aborted) {
+          setIsResolvingPhone(false);
+        }
       }
     }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => {
+      clearTimeout(delayDebounceFn);
+      abortController.abort();
+    };
   }, [recipientPhone, selectedPrefix]);
 
   // Amount is always entered in USD

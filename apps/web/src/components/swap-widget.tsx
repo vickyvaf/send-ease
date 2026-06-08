@@ -318,7 +318,7 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
     setSellAmount(""); // Reset amount to prevent mismatch with new token's balance
   };
 
-  const resolvePhoneAddress = async (phone: string) => {
+  const resolvePhoneAddress = async (phone: string, signal?: AbortSignal) => {
     setIsResolvingPhone(true);
     setResolvedAddress("");
     setPhoneResolutionStatus(null);
@@ -328,6 +328,7 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phoneNumber: phone, chainId }),
+        signal,
       });
       const data = await res.json();
       if (data.walletAddress) {
@@ -347,14 +348,19 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
           message: "No registered wallet found for this number.",
         });
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.name === "AbortError") {
+        return;
+      }
       console.error(e);
       setPhoneResolutionStatus({
         type: "error",
         message: "Failed to perform phone lookup.",
       });
     } finally {
-      setIsResolvingPhone(false);
+      if (!signal?.aborted) {
+        setIsResolvingPhone(false);
+      }
     }
   };
 
@@ -369,11 +375,16 @@ export function SwapWidget({ onTransferSuccess }: { onTransferSuccess?: () => vo
     }
     const fullPhoneNumber = `${selectedPrefix}${cleanedNumber}`;
 
+    const abortController = new AbortController();
+
     const delayDebounceFn = setTimeout(() => {
-      resolvePhoneAddress(fullPhoneNumber);
+      resolvePhoneAddress(fullPhoneNumber, abortController.signal);
     }, 300);
 
-    return () => clearTimeout(delayDebounceFn);
+    return () => {
+      clearTimeout(delayDebounceFn);
+      abortController.abort();
+    };
   }, [phoneNumber, selectedPrefix]);
 
   const handleSelectContact = (contact: ContactItem) => {
