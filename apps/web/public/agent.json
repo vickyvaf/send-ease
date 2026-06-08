@@ -12,9 +12,10 @@
   "supported_protocols": [
     "http"
   ],
-  "services": {
-    "http": {
-      "endpoint": "https://sendease.xyz/api/agent/chat",
+  "services": [
+    {
+      "name": "http",
+      "endpoint": "https://sendease.xyz",
       "skills": [
         "create_schedule",
         "get_active_schedules",
@@ -23,7 +24,7 @@
         "cancel_schedule"
       ]
     }
-  },
+  ],
   "endpoints": [
     {
       "type": "http",

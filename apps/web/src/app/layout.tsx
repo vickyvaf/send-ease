@@ -50,6 +50,9 @@ export const metadata: Metadata = {
     description: 'Automated, scheduled stablecoin remittance for MiniPay. Set up recurring payments on the Celo network easily.',
     images: ['/logo.png'],
   },
+  other: {
+    'talentapp:project_verification': 'b810a864aafa44836d67379d804880c0ab9176511c72ddfac5339fe630985fe1aac236adde93fefb2df8879760867f1d538aba97131d3d30bd4abc7bbfdde510',
+  },
 };
 
 export const viewport: Viewport = {

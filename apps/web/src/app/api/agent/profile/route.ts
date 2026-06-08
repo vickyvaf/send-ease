@@ -18,12 +18,13 @@ export async function GET() {
         ...r,
         agentId: envAgentId !== undefined && !isNaN(envAgentId) ? envAgentId : r.agentId,
       })),
-      services: {
-        http: {
-          ...staticProfile.services.http,
+      services: [
+        {
+          name: "http",
           endpoint: `${baseUrl}/api/agent/chat`,
-        },
-      },
+          skills: staticProfile.services[0]?.skills || [],
+        }
+      ],
       endpoints: [
         {
           type: "http",
