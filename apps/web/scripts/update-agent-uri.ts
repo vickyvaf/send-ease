@@ -129,13 +129,25 @@ async function main() {
     transport: http(rpcUrl),
   });
 
-  console.log("Submitting URI update transaction...");
+  console.log("Simulating URI update transaction...");
   try {
-    const hash = await walletClient.writeContract({
+    const { request } = await publicClient.simulateContract({
+      account,
       address: REGISTRY_ADDRESS,
       abi: REGISTRY_ABI,
       functionName: "setAgentURI",
       args: [AGENT_ID, dataURI],
+    });
+
+    console.log(`Estimated Gas: ${request.gas?.toString()}`);
+    const gasPrice = await publicClient.getGasPrice();
+    console.log(`Current Gas Price: ${gasPrice.toString()} wei (${Number(gasPrice) / 1e9} gwei)`);
+    console.log(`Estimated Tx Cost: ${((request.gas || 0n) * gasPrice).toString()} wei`);
+
+    console.log("Simulation succeeded. Submitting transaction...");
+    const hash = await walletClient.writeContract({
+      ...request,
+      gas: request.gas ? (request.gas * 120n) / 100n : 120000n,
     });
 
     console.log(`Transaction Hash: ${hash}`);
@@ -145,8 +157,11 @@ async function main() {
     console.log(`Gas Used: ${receipt.gasUsed.toString()}`);
 
     console.log("Agent URI updated successfully on Celo Mainnet!");
-  } catch (err) {
-    console.error("❌ Failed to update agent URI:", err);
+  } catch (err: any) {
+    console.error("❌ Failed simulation or execution:", err.shortMessage || err.message);
+    if (err.data) {
+      console.error("Error data:", err.data);
+    }
   }
 }
 
