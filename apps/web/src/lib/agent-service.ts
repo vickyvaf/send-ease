@@ -165,7 +165,7 @@ ${historyContext}
     } catch (err) {
       console.warn("Gemini API error, falling back to local NLP parser:", err);
       try {
-        return this.parsePromptLocally(prompt);
+        return this.parsePromptLocally(prompt, history);
       } catch (localErr) {
         return {
           success: false,
@@ -175,9 +175,45 @@ ${historyContext}
     }
   }
 
-  private parsePromptLocally(prompt: string): AgentActionResponse {
+  private parsePromptLocally(prompt: string, history?: any[]): AgentActionResponse {
     const promptLower = prompt.toLowerCase();
     
+    // Check if user is asking about active remittances
+    const isActiveRemittancesQuery = 
+      promptLower.includes("active") || 
+      promptLower.includes("schedule") || 
+      promptLower.includes("remittance") || 
+      promptLower.includes("aktif") || 
+      promptLower.includes("jadwal") || 
+      promptLower.includes("daftar") || 
+      promptLower.includes("list") || 
+      promptLower.includes("history") ||
+      promptLower.includes("riwayat");
+
+    if (isActiveRemittancesQuery && history) {
+      if (history.length === 0) {
+        return {
+          success: true,
+          data: {
+            message: "You have no active scheduled remittances at the moment."
+          }
+        };
+      }
+      
+      const listString = history.map((item) => {
+        const freqLabel = item.frequency === 0 ? "One-time" : item.frequency === 1 ? "Weekly" : "Monthly";
+        const statusLabel = item.status === 0 ? "Active" : item.status === 1 ? "Paused" : item.status === 2 ? "Cancelled" : "Completed";
+        return `- Schedule to "${item.recipientName}" | Amount: ${item.amount} USDm | Frequency: ${freqLabel} | Status: ${statusLabel} | Next Payment: ${item.nextPayment}`;
+      }).join("\n");
+
+      return {
+        success: true,
+        data: {
+          message: `Here are your scheduled remittances:\n\n${listString}`
+        }
+      };
+    }
+
     // Check for standard transaction amount
     const amountMatch = promptLower.match(/kirim\s+(\d+(?:\.\d+)?)/i) || promptLower.match(/(\d+(?:\.\d+)?)\s*usdm/i);
     const amount = amountMatch ? parseFloat(amountMatch[1]) : null;
