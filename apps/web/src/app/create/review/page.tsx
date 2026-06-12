@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/navigation";
-import { useAccount, usePublicClient, useWalletClient } from "wagmi";
-import { parseUnits, formatUnits, type Hex } from "viem";
-import { ShieldCheck, User, Calendar, DollarSign, Activity, Settings, AlertCircle, ChevronLeft } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { countries } from "@/constants/countries";
 import { useToast } from "@/context/toast-context";
+import { formatAmount, truncateAddress } from "@/lib/app-utils";
 import { REMITTANCE_ABI, REMITTANCE_ADDRESSES } from "@/lib/contracts";
 import { getStablecoinTokens } from "@/lib/stablecoin-tokens";
-import { truncateAddress, formatAmount } from "@/lib/app-utils";
-import { countries } from "@/constants/countries";
+import { Calendar, ChevronLeft, DollarSign, Settings, ShieldCheck, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { formatUnits, parseUnits } from "viem";
+import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 
 const ERC20_ABI = [
   {
