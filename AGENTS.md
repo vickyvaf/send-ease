@@ -45,8 +45,10 @@ This component runs on-demand when the user uses the natural language prompt inp
 ### 2.2 Execution & Automation Agent
 This component runs as a background service (scheduler daemon) using a dedicated agent hot-wallet.
 * **State Management**:
-  - Periodically queries the [RemittanceContract](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/PRD.md#L244) to find active, pending schedules.
+  - Periodically queries the [RemittanceContract](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/apps/contracts/src/RemittanceContract.sol) to find active, pending schedules.
   - Matches `nextExecutionTimestamp` with the block time.
+* **Scheduler Daemon API Route**:
+  - The automation agent scheduler runs via the `/api/agent/scheduler` endpoint (`apps/web/src/app/api/agent/scheduler/route.ts`). This is invoked periodically by a cron trigger.
 * **Safety & Limit Checks**:
   - Before triggering a payment, the agent verifies if the transaction is within the user-defined `maxMonthlyAmount` safety limit.
   - If the limit is reached, it halts the transfer, updates status to `Paused`, and triggers a notification.

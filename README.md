@@ -19,7 +19,7 @@ Sendease is a mobile-first, decentralized scheduled remittance MiniApp built on 
 This project is organized as a monorepo powered by **Turborepo**:
 
 * [apps/web](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/apps/web) - The Next.js 16 frontend app loaded inside MiniPay.
-* [apps/hardhat](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/apps/hardhat) - Smart contracts codebase (Hardhat, Solidity, tests).
+* [apps/contracts](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/apps/contracts) - Smart contracts codebase (Foundry, Solidity, tests).
 
 ---
 
@@ -116,7 +116,7 @@ For deeper details regarding specifications and implementation plans:
 * 📋 **[PRD.md](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/PRD.md)** - Product Requirements Document containing goals, target audience, functional specifications, and milestones.
 * 🎨 **[DESIGN.md](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/DESIGN.md)** - Visual brand identity, flat color palette, typography guidelines, mobile constraints, and component designs.
 * 🤖 **[AGENTS.md](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/AGENTS.md)** - AI Agent architecture, roles (intent vs automation), safety checks, and execution flows.
-* 📊 **[8004.mermaid](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/8004.mermaid)** - Flowcharts representing creation, verification, and automated scheduler workflows.
+* 📊 **[DIAGRAM.mermaid](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/DIAGRAM.mermaid)** - Flowcharts representing creation, verification, and automated scheduler workflows.
 * 🧪 **[TEST_CASE.md](file:///Users/vickyadifirmansyah/Documents/Projects/send-ease/TEST_CASE.md)** - High-level and detailed test cases for QA verification.
 
 ---
@@ -125,8 +125,9 @@ For deeper details regarding specifications and implementation plans:
 
 ### Prerequisites
 
-* [PNPM](https://pnpm.io/) (v9+ recommended)
+* [PNPM](https://pnpm.io/) (v8+ or v9+ recommended)
 * Node.js v18+
+* [Foundry](https://book.getfoundry.sh/) (for smart contracts compilation & testing)
 
 ### Setup
 
@@ -139,19 +140,42 @@ For deeper details regarding specifications and implementation plans:
    ```bash
    pnpm dev
    ```
-   This fires up the Next.js dev server (typically on `http://localhost:3000`) and watch tasks.
+   This fires up the Next.js dev server (typically on `http://localhost:3000`) and watches for changes.
 
 3. **Check/Compile Smart Contracts**:
+   To compile and test smart contracts using Foundry:
    ```bash
-   pnpm contracts:compile
-   pnpm contracts:test
+   cd apps/contracts
+   forge build
+   forge test
    ```
 
-### Deployment Scripts
+### Deployment & Verification (Foundry)
 
-* Deploy local node: `pnpm contracts:deploy`
-* Deploy to Celo Sepolia Testnet: `pnpm contracts:deploy:celo-sepolia`
-* Deploy to Celo Mainnet: `pnpm contracts:deploy:celo`
+Contracts are deployed using Foundry forge scripts:
+* Deploy to Celo Mainnet / Sepolia:
+  ```bash
+  cd apps/contracts
+  # Copy env and set your private key
+  cp .env.example .env
+  # Run the deploy script
+  ./deploy-mainnet.sh
+  ```
+
+### ERC-8004 Agent Registration
+
+To register the Sendease AI agent on-chain on the ERC-8004 registry:
+1. Make sure your environment variables in `apps/web/.env.local` are set (`AGENT_PRIVATE_KEY` or `RELAYER_PRIVATE_KEY`).
+2. Run the registration script:
+   ```bash
+   pnpm --filter web register-agent
+   ```
+3. To update the metadata URI:
+   ```bash
+   pnpm --filter web register-agent # or custom update script
+   # or run directly:
+   npx tsx apps/web/scripts/update-agent-uri.ts
+   ```
 
 ---
 
