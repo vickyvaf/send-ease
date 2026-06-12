@@ -10,7 +10,7 @@ export const IntentParsing: React.FC = () => {
   const opacity3 = spring({ frame: frame - 40, fps, config: { damping: 12 } });
 
   return (
-    <div className="flex flex-col w-full h-full bg-[#09090B] text-white font-sans p-20 justify-between border-[16px] border-[#09955F] border-solid">
+    <div className="flex flex-col w-full h-full bg-[#09090B] text-white font-sans p-20 justify-between">
       {/* Header */}
       <div>
         <span className="text-[#09955F] text-lg font-bold tracking-widest uppercase">Feature Spotlight</span>

@@ -9,7 +9,7 @@ export const Intro: React.FC = () => {
   const scale = spring({ frame, fps, from: 0.9, to: 1, config: { damping: 15 } });
 
   return (
-    <div className="flex flex-col items-center justify-center w-full h-full bg-[#09090B] text-white font-sans px-12 border-[16px] border-[#09955F] border-solid">
+    <div className="flex flex-col items-center justify-center w-full h-full bg-[#09090B] text-white font-sans px-12">
       <div 
         style={{ opacity, transform: `scale(${scale})` }}
         className="flex flex-col items-center text-center"
