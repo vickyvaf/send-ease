@@ -13,7 +13,9 @@
     "contracts:test": "turbo run test --filter=hardhat",
     "contracts:deploy": "turbo run deploy --filter=hardhat",
     "contracts:deploy:celo-sepolia": "turbo run deploy:celo-sepolia --filter=hardhat",
-    "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat"
+    "contracts:deploy:celo": "turbo run deploy:celo --filter=hardhat",
+    "video:start": "pnpm --filter preview-video start",
+    "video:build": "pnpm --filter preview-video build"
   },
   "devDependencies": {
     "@types/node": "^20.8.0",
